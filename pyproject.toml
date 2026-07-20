@@ -1,0 +1,16 @@
+[project]
+name = "browser-engineering-study"
+version = "0.1.0"
+description = "Web Browser Engineering study notes and code"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["ipykernel"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
