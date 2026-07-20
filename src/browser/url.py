@@ -87,11 +87,11 @@ class URL:
     return body
 
 
-def show(body, scheme):
+def lex(body, scheme=None):
   if scheme == "view-source":
-    print(body)
-    return
+    return body
 
+  text = ""
   in_tag = False
   in_html_entity = False
   html_entity = ""
@@ -106,21 +106,22 @@ def show(body, scheme):
       if c == ";":
         in_html_entity = False
         if html_entity == "lt":
-          print("<", end="")
+          text += "<"
         elif html_entity == "gt":
-          print(">", end="")
+          text += ">"
         else:
-          print(f"&{html_entity};", end="")
+          text += f"&{html_entity};"
         html_entity = ""
       else:
         html_entity += c
     elif not in_tag:
-      print(c, end="")
+      text += c
+  return text
 
 
 def load(url, headers=None):
   body = url.request(headers=headers)
-  show(body, url.scheme)
+  print(lex(body, url.scheme), end="")
 
 
 if __name__ == "__main__":
