@@ -1,3 +1,4 @@
+from browser.browser import SCROLL_STEP, Browser
 from browser.html import Text, Tag, lex
 from browser.layout import FONTS, HEIGHT, HSTEP, Layout, VSTEP, WIDTH, get_font
 from browser.url import URL, load
@@ -15,13 +16,15 @@ __all__ = [
     "Tag",
     "lex",
     "load",
-    "Layout",
     "FONTS",
     "get_font",
     "WIDTH",
     "HEIGHT",
     "HSTEP",
     "VSTEP",
+    "Layout",
+    "SCROLL_STEP",
+    "Browser",
     "capture_tk_window",
     "display_tk_window",
 ]
