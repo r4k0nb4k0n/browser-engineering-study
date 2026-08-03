@@ -1,4 +1,5 @@
-from browser.url import URL, lex, load
+from browser.html import Text, Tag, lex
+from browser.url import URL, load
 
 try:
   from browser.tk_capture import capture_tk_window, display_tk_window
@@ -9,6 +10,8 @@ except ImportError:
 
 __all__ = [
     "URL",
+    "Text",
+    "Tag",
     "lex",
     "load",
     "capture_tk_window",

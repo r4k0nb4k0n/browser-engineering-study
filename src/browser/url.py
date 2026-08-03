@@ -1,6 +1,8 @@
 import socket
 import ssl
 
+from browser.html import Text, Tag, lex
+
 
 class URL:
   def __init__(self, url):
@@ -87,41 +89,11 @@ class URL:
     return body
 
 
-def lex(body, scheme=None):
-  if scheme == "view-source":
-    return body
-
-  text = ""
-  in_tag = False
-  in_html_entity = False
-  html_entity = ""
-  for c in body:
-    if c == "<":
-      in_tag = True
-    elif c == ">":
-      in_tag = False
-    elif c == "&":
-      in_html_entity = True
-    elif in_html_entity:
-      if c == ";":
-        in_html_entity = False
-        if html_entity == "lt":
-          text += "<"
-        elif html_entity == "gt":
-          text += ">"
-        else:
-          text += f"&{html_entity};"
-        html_entity = ""
-      else:
-        html_entity += c
-    elif not in_tag:
-      text += c
-  return text
-
-
 def load(url, headers=None):
   body = url.request(headers=headers)
-  print(lex(body, url.scheme), end="")
+  for tok in lex(body, url.scheme):
+    if isinstance(tok, Text):
+      print(tok.text, end="")
 
 
 if __name__ == "__main__":
