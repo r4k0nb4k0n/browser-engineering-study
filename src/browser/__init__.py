@@ -1,5 +1,5 @@
 from browser.html import Text, Tag, lex
-from browser.layout import HEIGHT, HSTEP, Layout, VSTEP, WIDTH
+from browser.layout import FONTS, HEIGHT, HSTEP, Layout, VSTEP, WIDTH, get_font
 from browser.url import URL, load
 
 try:
@@ -16,6 +16,8 @@ __all__ = [
     "lex",
     "load",
     "Layout",
+    "FONTS",
+    "get_font",
     "WIDTH",
     "HEIGHT",
     "HSTEP",
