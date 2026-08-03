@@ -1,4 +1,5 @@
 from browser.html import Text, Tag, lex
+from browser.layout import HEIGHT, HSTEP, Layout, VSTEP, WIDTH
 from browser.url import URL, load
 
 try:
@@ -14,6 +15,11 @@ __all__ = [
     "Tag",
     "lex",
     "load",
+    "Layout",
+    "WIDTH",
+    "HEIGHT",
+    "HSTEP",
+    "VSTEP",
     "capture_tk_window",
     "display_tk_window",
 ]
