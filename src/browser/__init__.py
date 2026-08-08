@@ -1,5 +1,5 @@
 from browser.browser import SCROLL_STEP, Browser
-from browser.html import Text, Tag, lex
+from browser.html import Element, HTMLParser, Tag, Text, lex, print_tree
 from browser.layout import FONTS, HEIGHT, HSTEP, Layout, VSTEP, WIDTH, get_font
 from browser.url import URL, load
 
@@ -13,8 +13,11 @@ except ImportError:
 __all__ = [
     "URL",
     "Text",
+    "Element",
     "Tag",
     "lex",
+    "HTMLParser",
+    "print_tree",
     "load",
     "FONTS",
     "get_font",

@@ -1,7 +1,7 @@
 import tkinter
 import tkinter.font
 
-from browser.html import Text, Tag, lex
+from browser.html import Element, HTMLParser, Text
 
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
@@ -12,19 +12,23 @@ FONTS = {}
 def get_font(size, weight, style):
   key = (size, weight, style)
   if key not in FONTS:
-    font = tkinter.font.Font(size=size, weight=weight, slant=style)
-    label = tkinter.Label(font=font)
+    try:
+      font = tkinter.font.Font(size=size, weight=weight, slant=style)
+      label = tkinter.Label(font=font)
+    except RuntimeError:
+      # Tk 루트 창이 없을 경우 자동 생성하여 폰트 런타임 에러 방지
+      tkinter.Tk()
+      font = tkinter.font.Font(size=size, weight=weight, slant=style)
+      label = tkinter.Label(font=font)
     FONTS[key] = (font, label)
   return FONTS[key][0]
 
 
 class Layout:
-  def __init__(self, tokens):
-    # 예전 lex(문자열 반환)나 HTML 문자열이 그대로 들어오면 토큰으로 맞춘다.
-    if isinstance(tokens, str):
-      tokens = lex(tokens)
-      if isinstance(tokens, str):
-        tokens = [Text(tokens)]
+
+  def __init__(self, tree):
+    if isinstance(tree, str):
+      tree = HTMLParser(tree).parse()
 
     self.display_list = []
     self.cursor_x = HSTEP
@@ -34,46 +38,57 @@ class Layout:
     self.size = 12
     self.line = []
     self.centered = False
-    for tok in tokens:
-      self.token(tok)
+
+    self.recurse(tree)
     self.flush()
 
-  def token(self, tok):
-    if isinstance(tok, Text):
-      for word in tok.text.split():
+  def open_tag(self, tag):
+    if tag == "i":
+      self.style = "italic"
+    elif tag == "b":
+      self.weight = "bold"
+    elif tag == "small":
+      self.size -= 2
+    elif tag == "big":
+      self.size += 4
+    elif tag == "br":
+      self.flush()
+    elif tag == "p":
+      self.flush()
+      self.cursor_y += VSTEP
+    elif tag == "h1":
+      self.size += 6
+      self.flush()
+      self.cursor_y += VSTEP
+      self.centered = True
+
+  def close_tag(self, tag):
+    if tag == "i":
+      self.style = "roman"
+    elif tag == "b":
+      self.weight = "normal"
+    elif tag == "small":
+      self.size += 2
+    elif tag == "big":
+      self.size -= 4
+    elif tag == "p":
+      self.flush()
+      self.cursor_y += VSTEP
+    elif tag == "h1":
+      self.size -= 6
+      self.flush()
+      self.cursor_y += VSTEP
+      self.centered = False
+
+  def recurse(self, tree):
+    if isinstance(tree, Text):
+      for word in tree.text.split():
         self.word(word)
-    elif isinstance(tok, Tag):
-      if tok.tag == "i":
-        self.style = "italic"
-      elif tok.tag == "/i":
-        self.style = "roman"
-      elif tok.tag == "b":
-        self.weight = "bold"
-      elif tok.tag == "/b":
-        self.weight = "normal"
-      elif tok.tag == "small":
-        self.size -= 2
-      elif tok.tag == "/small":
-        self.size += 2
-      elif tok.tag == "big":
-        self.size += 4
-      elif tok.tag == "/big":
-        self.size -= 4
-      elif tok.tag == "br":
-        self.flush()
-      elif tok.tag == "/p":
-        self.flush()
-        self.cursor_y += VSTEP
-      elif tok.tag == "h1 class=\"title\"":
-        self.size += 6
-        self.flush()
-        self.cursor_y += VSTEP
-        self.centered = True
-      elif tok.tag == "/h1":
-        self.size -= 6
-        self.flush()
-        self.cursor_y += VSTEP
-        self.centered = False
+    else:
+      self.open_tag(tree.tag)
+      for child in tree.children:
+        self.recurse(child)
+      self.close_tag(tree.tag)
 
   def word(self, word):
     font = get_font(self.size, self.weight, self.style)

@@ -1,16 +1,19 @@
 import tkinter
 
-from browser.html import lex
+from browser.html import HTMLParser
 from browser.layout import HEIGHT, Layout, WIDTH
 
 SCROLL_STEP = 100
 
 
 class Browser:
+
   def __init__(self):
     self.window = tkinter.Tk()
-    self.canvas = tkinter.Canvas(self.window, width=WIDTH, height=HEIGHT)
-    self.canvas.pack()
+    self.canvas = tkinter.Canvas(
+        self.window, width=WIDTH, height=HEIGHT, bg="white"
+    )
+    self.canvas.pack(fill="both", expand=True)
     self.scroll = 0
     self.window.bind("<Down>", self.scrolldown)
 
@@ -18,13 +21,13 @@ class Browser:
     self.canvas.delete("all")
     for x, y, word, font in self.display_list:
       self.canvas.create_text(
-          x, y - self.scroll, text=word, font=font, anchor="nw"
+          x, y - self.scroll, text=word, font=font, anchor="nw", fill="black"
       )
 
   def load(self, url):
     body = url.request()
-    tokens = lex(body)
-    self.display_list = Layout(tokens).display_list
+    self.nodes = HTMLParser(body).parse()
+    self.display_list = Layout(self.nodes).display_list
     self.draw()
 
   def scrolldown(self, e):
