@@ -9,16 +9,20 @@ HSTEP, VSTEP = 13, 18
 FONTS = {}
 
 
-def get_font(size, weight, style):
-  key = (size, weight, style)
+def get_font(size, weight, style, family="Times New Roman"):
+  key = (size, weight, style, family)
   if key not in FONTS:
     try:
-      font = tkinter.font.Font(size=size, weight=weight, slant=style)
+      font = tkinter.font.Font(
+          family=family, size=size, weight=weight, slant=style
+      )
       label = tkinter.Label(font=font)
     except RuntimeError:
       # Tk 루트 창이 없을 경우 자동 생성하여 폰트 런타임 에러 방지
       tkinter.Tk()
-      font = tkinter.font.Font(size=size, weight=weight, slant=style)
+      font = tkinter.font.Font(
+          family=family, size=size, weight=weight, slant=style
+      )
       label = tkinter.Label(font=font)
     FONTS[key] = (font, label)
   return FONTS[key][0]
@@ -38,6 +42,7 @@ class Layout:
     self.size = 12
     self.line = []
     self.centered = False
+    self.in_pre = False
 
     self.recurse(tree)
     self.flush()
@@ -56,6 +61,9 @@ class Layout:
     elif tag == "p":
       self.flush()
       self.cursor_y += VSTEP
+    elif tag == "pre":
+      self.in_pre = True
+      self.flush()
     elif tag == "h1":
       self.size += 6
       self.flush()
@@ -74,6 +82,10 @@ class Layout:
     elif tag == "p":
       self.flush()
       self.cursor_y += VSTEP
+    elif tag == "pre":
+      self.in_pre = False
+      self.flush()
+      self.cursor_y += VSTEP
     elif tag == "h1":
       self.size -= 6
       self.flush()
@@ -82,21 +94,31 @@ class Layout:
 
   def recurse(self, tree):
     if isinstance(tree, Text):
-      for word in tree.text.split():
-        self.word(word)
+      lines = tree.text.split("\n")
+      for i, line in enumerate(lines):
+        if i > 0:
+          self.flush()
+        if self.in_pre:
+          if line:
+            self.word(line, add_space=False)
+        else:
+          words = line.split()
+          for j, word in enumerate(words):
+            self.word(word, add_space=(j < len(words) - 1))
     else:
       self.open_tag(tree.tag)
       for child in tree.children:
         self.recurse(child)
       self.close_tag(tree.tag)
 
-  def word(self, word):
-    font = get_font(self.size, self.weight, self.style)
+  def word(self, word, add_space=True):
+    family = "Courier New" if self.in_pre else "Times New Roman"
+    font = get_font(self.size, self.weight, self.style, family=family)
     w = font.measure(word)
     if self.cursor_x + w > WIDTH - HSTEP:
       self.flush()
     self.line.append((self.cursor_x, word, font))
-    self.cursor_x += w + font.measure(" ")
+    self.cursor_x += w + (font.measure(" ") if add_space else 0)
 
   def flush(self):
     if not self.line:

@@ -130,9 +130,7 @@ class HTMLParser:
         self.add_tag("html")
       elif open_tags == ["html"] and tag not in ["head", "body", "/html"]:
         if tag in self.HEAD_TAGS:
-          self.add_head(tag) if hasattr(self, "add_head") else self.add_tag(
-              "head"
-          )
+          self.add_tag("head")
         else:
           self.add_tag("body")
       elif open_tags == ["html", "head"] and tag not in ["/head"] + self.HEAD_TAGS:
@@ -180,5 +178,54 @@ class HTMLParser:
     return self.unfinished.pop()
 
 
+class ViewSourceParser(HTMLParser):
+
+  def parse(self):
+    self.unfinished = [Element("pre", {}, None)]
+    text = ""
+    in_tag = False
+    i = 0
+    while i < len(self.body):
+      c = self.body[i]
+      if c == "<":
+        in_tag = True
+        if text:
+          # 인덴트 성격의 공백은 일반 폰트
+          if text.isspace():
+            parent = self.unfinished[-1]
+            parent.children.append(Text(text, parent))
+          # but make text contents bold.
+          else:
+            b_node = Element("b", {}, self.unfinished[-1])
+            self.unfinished[-1].children.append(b_node)
+            b_node.children.append(Text(text, b_node))
+        text = "<"
+        i += 1
+      elif c == ">":
+        in_tag = False
+        text += ">"
+        # Keep source code for HTML tags in a normal font,
+        parent = self.unfinished[-1]
+        parent.children.append(Text(text, parent))
+        text = ""
+        i += 1
+      else:
+        text += c
+        i += 1
+    if text:
+      # Keep source code for HTML tags in a normal font,
+      if in_tag or text.isspace():
+        parent = self.unfinished[-1]
+        parent.children.append(Text(text, parent))
+      # but make text contents bold.
+      else:
+        b_node = Element("b", {}, self.unfinished[-1])
+        self.unfinished[-1].children.append(b_node)
+        b_node.children.append(Text(text, b_node))
+    return self.unfinished[0]
+
+
 def lex(body, scheme=None):
+  if scheme == "view-source":
+    return ViewSourceParser(body).parse()
   return HTMLParser(body).parse()

@@ -1,6 +1,6 @@
 import tkinter
 
-from browser.html import HTMLParser
+from browser.html import HTMLParser, ViewSourceParser
 from browser.layout import HEIGHT, Layout, WIDTH
 
 SCROLL_STEP = 100
@@ -9,7 +9,10 @@ SCROLL_STEP = 100
 class Browser:
 
   def __init__(self):
-    self.window = tkinter.Tk()
+    if tkinter._default_root:
+      self.window = tkinter.Toplevel(tkinter._default_root)
+    else:
+      self.window = tkinter.Tk()
     self.canvas = tkinter.Canvas(
         self.window, width=WIDTH, height=HEIGHT, bg="white"
     )
@@ -26,7 +29,10 @@ class Browser:
 
   def load(self, url):
     body = url.request()
-    self.nodes = HTMLParser(body).parse()
+    if url.scheme == "view-source":
+      self.nodes = ViewSourceParser(body).parse()
+    else:
+      self.nodes = HTMLParser(body).parse()
     self.display_list = Layout(self.nodes).display_list
     self.draw()
 
