@@ -1,7 +1,7 @@
 import tkinter
 
 from browser.html import HTMLParser, ViewSourceParser
-from browser.layout import HEIGHT, WIDTH, DocumentLayout, paint_tree
+from browser.layout import HEIGHT, VSTEP, WIDTH, DocumentLayout, paint_tree
 
 SCROLL_STEP = 100
 
@@ -22,10 +22,10 @@ class Browser:
 
   def draw(self):
     self.canvas.delete("all")
-    for x, y, word, font in self.display_list:
-      self.canvas.create_text(
-          x, y - self.scroll, text=word, font=font, anchor="nw", fill="black"
-      )
+    for cmd in self.display_list:
+      if cmd.top > self.scroll + HEIGHT: continue
+      if cmd.bottom < self.scroll: continue
+      cmd.execute(self.scroll, self.canvas)
 
   def load(self, url):
     body = url.request()
@@ -40,5 +40,6 @@ class Browser:
     self.draw()
 
   def scrolldown(self, e):
-    self.scroll += SCROLL_STEP
+    max_y = max(self.document.height + 2 * VSTEP - HEIGHT, 0)
+    self.scroll = min(self.scroll + SCROLL_STEP, max_y)
     self.draw()

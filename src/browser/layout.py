@@ -135,7 +135,16 @@ class BlockLayout:
       previous = next
 
   def paint(self):
-    return self.display_list
+    cmds = []
+    if isinstance(self.node, Element) and self.node.tag == "pre":
+      x2, y2 = self.x + self.width, self.y + self.height
+      rect = DrawRect(self.x, self.y, x2, y2, "gray")
+      cmds.append(rect)
+
+    if self.layout_mode() == "inline":
+      for x, y, word, font in self.display_list:
+        cmds.append(DrawText(x, y, word, font))
+    return cmds
 
   def open_tag(self, tag):
     if tag == "i":
@@ -228,6 +237,38 @@ class BlockLayout:
     self.cursor_y = baseline + 1.25 * max_descent
     self.cursor_x = 0
     self.line = []
+
+class DrawText:
+  def __init__(self, x1, y1, text, font):
+    self.top = y1
+    self.left = x1
+    self.text = text
+    self.font = font
+    self.bottom = y1 + font.metrics("linespace")
+
+  def execute(self, scroll, canvas):
+    canvas.create_text(
+        self.left, self.top - scroll,
+        text=self.text,
+        font=self.font,
+        anchor='nw', fill="black"
+    )
+
+class DrawRect:
+  def __init__(self, x1, y1, x2, y2, color):
+    self.top = y1
+    self.left = x1
+    self.bottom = y2
+    self.right = x2
+    self.color = color
+
+  def execute(self, scroll, canvas):
+    canvas.create_rectangle(
+        self.left, self.top - scroll,
+        self.right, self.bottom - scroll,
+        width=0,
+        fill=self.color
+    )
 
 # layout.py 맨 끝부분
 def paint_tree(layout_object, display_list):
