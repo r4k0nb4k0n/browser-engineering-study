@@ -42,7 +42,6 @@ class DocumentLayout:
     self.node = node
     self.parent = None
     self.children = []
-    self.display_list = []
     self.x = None
     self.y = None
     self.width = None
@@ -59,6 +58,9 @@ class DocumentLayout:
     self.children.append(child)
     child.layout()
     self.height = child.height + 2 * VSTEP
+
+  def paint(self):
+    return []
 
 class BlockLayout:
 
@@ -131,6 +133,9 @@ class BlockLayout:
       next = BlockLayout(child, self, previous)
       self.children.append(next)
       previous = next
+
+  def paint(self):
+    return self.display_list
 
   def open_tag(self, tag):
     if tag == "i":
@@ -223,3 +228,12 @@ class BlockLayout:
     self.cursor_y = baseline + 1.25 * max_descent
     self.cursor_x = 0
     self.line = []
+
+# layout.py 맨 끝부분
+def paint_tree(layout_object, display_list):
+    # 1. 현재 노드(layout_object)가 직접 그려야 할 명령들을 리스트에 추가
+    display_list.extend(layout_object.paint())
+    
+    # 2. 모든 자식 노드들을 돌면서 재귀적으로 페인팅 명령 수집
+    for child in layout_object.children:
+        paint_tree(child, display_list)

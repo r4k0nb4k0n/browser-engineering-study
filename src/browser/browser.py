@@ -1,7 +1,7 @@
 import tkinter
 
 from browser.html import HTMLParser, ViewSourceParser
-from browser.layout import HEIGHT, WIDTH, DocumentLayout
+from browser.layout import HEIGHT, WIDTH, DocumentLayout, paint_tree
 
 SCROLL_STEP = 100
 
@@ -35,7 +35,8 @@ class Browser:
       self.nodes = HTMLParser(body).parse()
     self.document = DocumentLayout(self.nodes)
     self.document.layout()
-    self.display_list = self.document.display_list
+    self.display_list = []
+    paint_tree(self.document, self.display_list)
     self.draw()
 
   def scrolldown(self, e):
