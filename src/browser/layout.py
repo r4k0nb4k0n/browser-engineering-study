@@ -140,6 +140,10 @@ class BlockLayout:
       x2, y2 = self.x + self.width, self.y + self.height
       rect = DrawRect(self.x, self.y, x2, y2, "gray")
       cmds.append(rect)
+    if isinstance(self.node, Element) and self.node.tag == "nav" and self.node.attributes.get("class") == "links":
+      x2, y2 = self.x + self.width, self.y + self.height
+      rect = DrawRect(self.x, self.y, x2, y2, "lightgray")
+      cmds.append(rect)
 
     if self.layout_mode() == "inline":
       for x, y, word, font in self.display_list:
