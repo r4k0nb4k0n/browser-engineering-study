@@ -97,6 +97,11 @@ class BlockLayout:
     else:
       self.y = self.parent.y
 
+    if isinstance(self.node, Element) and self.node.tag == "nav" and self.node.attributes.get("id") == "toc":
+      tableOfContentsTitle = Element("div", { "class": "table-of-contents-title" }, self.node)
+      tableOfContentsTitle.children.append(Text("Table of Contents", tableOfContentsTitle))
+      self.node.children.insert(0, tableOfContentsTitle)
+
     mode = self.layout_mode()
     if mode == "block":
       previous = None
@@ -143,6 +148,10 @@ class BlockLayout:
     if isinstance(self.node, Element) and self.node.tag == "nav" and self.node.attributes.get("class") == "links":
       x2, y2 = self.x + self.width, self.y + self.height
       rect = DrawRect(self.x, self.y, x2, y2, "lightgray")
+      cmds.append(rect)
+    if isinstance(self.node, Element) and self.node.tag == "div" and self.node.attributes.get("class") == "table-of-contents-title":
+      x2, y2 = self.x + self.width, self.y + self.height
+      rect = DrawRect(self.x, self.y, x2, y2, "gray")
       cmds.append(rect)
 
     if self.layout_mode() == "inline":
