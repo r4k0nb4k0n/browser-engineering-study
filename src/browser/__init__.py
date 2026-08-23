@@ -1,6 +1,6 @@
 from browser.browser import SCROLL_STEP, Browser
 from browser.html import Element, HTMLParser, Tag, Text, lex, print_tree
-from browser.layout import FONTS, HEIGHT, HSTEP, Layout, VSTEP, WIDTH, get_font
+from browser.layout import FONTS, HEIGHT, HSTEP, BlockLayout, VSTEP, WIDTH, get_font
 from browser.url import URL, load
 
 try:
