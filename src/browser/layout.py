@@ -43,14 +43,22 @@ class DocumentLayout:
     self.parent = None
     self.children = []
     self.display_list = []
+    self.x = None
+    self.y = None
+    self.width = None
+    self.height = None
 
   def __repr__(self):
     return "DocumentLayout()"
 
   def layout(self):
+    self.width = WIDTH - 2 * HSTEP
+    self.x = HSTEP
+    self.y = VSTEP
     child = BlockLayout(self.node, self, None)
     self.children.append(child)
     child.layout()
+    self.height = child.height + 2 * VSTEP
 
 class BlockLayout:
 
@@ -59,7 +67,11 @@ class BlockLayout:
     self.parent = parent
     self.previous = previous
     self.children = []
-  
+    self.x = None
+    self.y = None
+    self.width = None
+    self.height = None
+
   def __repr__(self):
     return "BlockLayout({})".format(self.node)
   
@@ -76,6 +88,13 @@ class BlockLayout:
       return "block"
 
   def layout(self):
+    self.x = self.parent.x
+    self.width = self.parent.width
+    if self.previous:
+      self.y = self.previous.y + self.previous.height
+    else:
+      self.y = self.parent.y
+
     mode = self.layout_mode()
     if mode == "block":
       previous = None
@@ -100,6 +119,11 @@ class BlockLayout:
 
     for child in self.children:
       child.layout()
+
+    if mode == "block":
+      self.height = sum([child.height for child in self.children])
+    else:
+      self.height = self.cursor_y
 
   def layout_intermediate(self):
     previous = None
@@ -176,7 +200,7 @@ class BlockLayout:
     family = "Courier New" if self.in_pre else "Times New Roman"
     font = get_font(self.size, self.weight, self.style, family=family)
     w = font.measure(word)
-    if self.cursor_x + w > WIDTH - HSTEP:
+    if self.cursor_x + w > self.width:
       self.flush()
     self.line.append((self.cursor_x, word, font))
     self.cursor_x += w + (font.measure(" ") if add_space else 0)
@@ -188,14 +212,14 @@ class BlockLayout:
     max_ascent = max(metric["ascent"] for metric in metrics)
     baseline = self.cursor_y + 1.25 * max_ascent
     line_width = sum(font.measure(word) for x, word, font in self.line)
-    for index, (x, word, font) in enumerate(self.line):
-      y = baseline - font.metrics("ascent")
+    for index, (rel_x, word, font) in enumerate(self.line):
+      y = self.y + baseline - font.metrics("ascent")
       if self.centered:
-        x += WIDTH / 2 - line_width / 2
+        x = self.x + (self.width / 2 - line_width / 2) + rel_x
       else:
-        x = x
+        x = self.x + rel_x
       self.display_list.append((x, y, word, font))
     max_descent = max(metric["descent"] for metric in metrics)
     self.cursor_y = baseline + 1.25 * max_descent
-    self.cursor_x = HSTEP
+    self.cursor_x = 0
     self.line = []
