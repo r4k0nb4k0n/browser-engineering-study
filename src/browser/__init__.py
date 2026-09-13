@@ -1,4 +1,4 @@
-from browser.css import CSSParser, style
+from browser.css import CSSParser, DescendantSelector, TagSelector, style
 from browser.html import Element, HTMLParser, Tag, Text, lex, print_tree
 from browser.url import URL, load
 
@@ -38,5 +38,7 @@ __all__ = [
     "capture_tk_window",
     "display_tk_window",
     "CSSParser",
+    "TagSelector",
+    "DescendantSelector",
     "style",
 ]
