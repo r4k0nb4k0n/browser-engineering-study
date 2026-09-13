@@ -1,6 +1,11 @@
 # browser-engineering-study
 
-[Web Browser Engineering](https://browser.engineering/) 스터디 저장소입니다.
+[Web Browser Engineering](https://browser.engineering/) 스터디 저장소입니다.  
+기존 OS 환경 제약(Python 3.9/3.10)에서 **Python 3.13 이상** 기준으로 최신화되었습니다.
+
+## Requirements
+
+- Python >= 3.13 (Tkinter 포함)
 
 ## Setup
 
@@ -22,16 +27,29 @@ pip install -e ".[dev]"
 
 ### macOS
 
-Homebrew Python은 기본에 Tk가 없어서 `python-tk`를 같이 설치합니다.
+Homebrew Python은 기본에 Tk가 포함되어 있지 않으므로 `python-tk`를 함께 설치합니다.  
+`$(brew --prefix)`를 사용하여 Apple Silicon(`/opt/homebrew`)과 Intel Mac(`/usr/local`) 환경 모두 호환됩니다.
+
+#### Option 1: venv / pip
 
 ```bash
 brew install python@3.13 python-tk@3.13
-/opt/homebrew/bin/python3.13 -m venv .venv
+$(brew --prefix)/bin/python3.13 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev,macos]"
 ```
 
-`macos` extra는 macOS에서 Jupyter Tk 창 스크린샷에 필요합니다. Windows는 추가 패키지 없이 `display_tk_window`가 동작합니다.
+#### Option 2: uv
+
+```bash
+brew install python@3.13 python-tk@3.13
+uv venv --python $(brew --prefix)/bin/python3.13 .venv
+source .venv/bin/activate
+uv pip install -e ".[dev,macos]"
+```
+
+> [!NOTE]
+> `macos` extra는 macOS 환경에서 Jupyter Tk 창 스크린샷 캡처에 필요합니다. Windows는 별도 extra 없이 `display_tk_window`가 동작합니다.
 
 노트북에서는 인터프리터/커널을 `.venv`로 선택한 뒤:
 
@@ -47,3 +65,4 @@ body = URL("https://browser.engineering/").request()
 src/browser/   # import 가능한 패키지 (URL 등)
 *.ipynb        # 장별 학습 노트북
 ```
+
