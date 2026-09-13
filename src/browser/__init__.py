@@ -1,6 +1,7 @@
 from browser.css import (
     CSSParser,
     DEFAULT_STYLE_SHEET,
+    INHERITED_PROPERTIES,
     DescendantSelector,
     TagSelector,
     cascade_priority,
@@ -51,4 +52,5 @@ __all__ = [
     "cascade_priority",
     "style",
     "DEFAULT_STYLE_SHEET",
+    "INHERITED_PROPERTIES",
 ]
