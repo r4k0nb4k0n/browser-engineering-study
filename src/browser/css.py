@@ -1,3 +1,6 @@
+from browser.html import Element
+
+
 class CSSParser:
 
   def __init__(self, s):
@@ -57,3 +60,14 @@ class CSSParser:
         else:
           break
     return pairs
+
+
+def style(node):
+  node.style = {}
+  if isinstance(node, Element) and "style" in node.attributes:
+    pairs = CSSParser(node.attributes["style"]).body()
+    for property, value in pairs.items():
+      node.style[property] = value
+  for child in node.children:
+    style(child)
+

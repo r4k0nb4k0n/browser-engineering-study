@@ -1,5 +1,6 @@
 import tkinter
 
+from browser.css import style
 from browser.html import HTMLParser, ViewSourceParser
 from browser.layout import HEIGHT, VSTEP, WIDTH, DocumentLayout, paint_tree
 
@@ -26,6 +27,7 @@ class Browser:
       if cmd.top > self.scroll + HEIGHT: continue
       if cmd.bottom < self.scroll: continue
       cmd.execute(self.scroll, self.canvas)
+    self.canvas.update_idletasks()
 
   def load(self, url):
     body = url.request()
@@ -33,6 +35,7 @@ class Browser:
       self.nodes = ViewSourceParser(body).parse()
     else:
       self.nodes = HTMLParser(body).parse()
+    style(self.nodes)
     self.document = DocumentLayout(self.nodes)
     self.document.layout()
     self.display_list = []

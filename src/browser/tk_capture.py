@@ -13,6 +13,8 @@ import zlib
 
 def _close_tk_window(window):
   """Force-close a Tk window so it does not linger."""
+  if hasattr(window, "window"):
+    window = window.window
   for action in (
       lambda: window.attributes("-topmost", False),
       window.withdraw,
@@ -37,6 +39,14 @@ def _close_tk_window(window):
       pass
   tkinter._default_root = None
 
+  # Clear leftover font cache if layout module was imported
+  try:
+    from browser.layout import FONTS
+    if FONTS is not None:
+      FONTS.clear()
+  except (ImportError, AttributeError):
+    pass
+
 
 @contextlib.contextmanager
 def _suppress_stderr():
@@ -60,8 +70,8 @@ def _suppress_stderr():
 
 def _prepare_tk_window(window, settle_seconds=0.5):
   """Bring a Tk window on-screen long enough to capture."""
-  window.update_idletasks()
-  window.update()
+  if hasattr(window, "window"):
+    window = window.window
   try:
     window.deiconify()
     window.lift()
@@ -70,13 +80,21 @@ def _prepare_tk_window(window, settle_seconds=0.5):
     raise RuntimeError(
         "Tk 창이 이미 파괴된 상태입니다. Jupyter 커널을 재시작한 뒤 다시 실행하세요."
     ) from exc
+
+  # 🌟 핵심 개선: time.sleep 동안 Tk 이벤트 루프가 멈추는 것을 방지하고
+  # window.update()와 update_idletasks()를 지속적으로 호출하여
+  # 복잡하거나 많은 드로잉 명령(캔버스 객체)이 OS 윈도우 버퍼에 완전히 반영되도록 보장합니다.
+  end_time = time.time() + max(settle_seconds, 0.3)
+  while time.time() < end_time:
+    window.update_idletasks()
+    window.update()
+    time.sleep(0.04)
+
+  window.update_idletasks()
   window.update()
-  time.sleep(settle_seconds)
-  try:
-    window.attributes("-topmost", False)
-  except tkinter.TclError:
-    pass
-  window.update()
+  # ⚠️ 캡처 직전에 topmost를 False로 해제하지 않습니다.
+  # 캡처 직전에 topmost가 풀리면 활성 에디터 창 뒤로 숨겨져 macOS에서 빈 윈도우가 캡처될 수 있습니다.
+  # 캡처가 끝나면 _close_tk_window에서 안전하게 topmost 해제 및 창 파기가 이루어집니다.
 
 
 def _png_chunk(tag, data):
@@ -247,6 +265,8 @@ def capture_tk_window(window, settle_seconds=0.5):
 
   Does not change the window title or other learning-facing window state.
   """
+  if hasattr(window, "window"):
+    window = window.window
   _prepare_tk_window(window, settle_seconds=settle_seconds)
   with _suppress_stderr():
     if sys.platform == "darwin":
@@ -326,6 +346,10 @@ def display_tk_window(
       # ... canvas 등 학습 코드 ...
       display_tk_window(window)
 
+  브라우저 인스턴스(browser)를 직접 넘겨도 자동으로 browser.window를 캡처합니다::
+
+      display_tk_window(browser)
+
   캡처 후 window는 닫힌다. macOS에서는 커널 프로세스에 GUI가 붙을 수 있어
   Dock에 Python이 남으면 커널을 재시작하면 된다.
 
@@ -337,6 +361,9 @@ def display_tk_window(
   캡처 헬퍼는 window.title() 등 창 타이틀을 바꾸지 않는다.
   """
   from IPython.display import Image, display
+
+  if window is not None and hasattr(window, "window"):
+    window = window.window
 
   if window is None:
     png = _capture_tk_in_subprocess(
