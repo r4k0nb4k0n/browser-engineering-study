@@ -1,4 +1,5 @@
 from browser.browser import SCROLL_STEP, Browser
+from browser.css import CSSParser
 from browser.html import Element, HTMLParser, Tag, Text, lex, print_tree
 from browser.layout import FONTS, HEIGHT, HSTEP, BlockLayout, VSTEP, WIDTH, get_font
 from browser.url import URL, load
@@ -30,4 +31,5 @@ __all__ = [
     "Browser",
     "capture_tk_window",
     "display_tk_window",
+    "CSSParser",
 ]
