@@ -1,6 +1,6 @@
 import tkinter
 
-from browser.css import CSSParser, DEFAULT_STYLE_SHEET, style
+from browser.css import CSSParser, DEFAULT_STYLE_SHEET, cascade_priority, style
 from browser.html import Element, HTMLParser, ViewSourceParser, tree_to_list
 from browser.layout import HEIGHT, VSTEP, WIDTH, DocumentLayout, paint_tree
 
@@ -51,7 +51,7 @@ class Browser:
         continue
       rules.extend(CSSParser(body).parse())
 
-    style(self.nodes, rules)
+    style(self.nodes, sorted(rules, key=cascade_priority))
     self.document = DocumentLayout(self.nodes)
     self.document.layout()
     self.display_list = []

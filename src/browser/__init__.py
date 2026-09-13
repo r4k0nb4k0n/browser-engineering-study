@@ -3,6 +3,7 @@ from browser.css import (
     DEFAULT_STYLE_SHEET,
     DescendantSelector,
     TagSelector,
+    cascade_priority,
     style,
 )
 from browser.html import Element, HTMLParser, Tag, Text, lex, print_tree, tree_to_list
@@ -47,6 +48,7 @@ __all__ = [
     "CSSParser",
     "TagSelector",
     "DescendantSelector",
+    "cascade_priority",
     "style",
     "DEFAULT_STYLE_SHEET",
 ]
