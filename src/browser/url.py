@@ -11,6 +11,7 @@ class URL:
     assert self.scheme in ["http", "https", "file", "data", "view-source"]
 
     self.host = None
+    self.port = None
     self.path = None
     self.data = None
 
@@ -29,6 +30,31 @@ class URL:
       self.host, remainder = remainder.split("/", 1)
       self.path = "/" + remainder
 
+      if self.scheme == "http":
+        self.port = 80
+      elif self.scheme == "https":
+        self.port = 443
+
+      if ":" in self.host:
+        self.host, port = self.host.split(":", 1)
+        self.port = int(port)
+
+  def resolve(self, url):
+    if "://" in url: return URL(url)
+    if not url.startswith("/"):
+      dir, _ = self.path.rsplit("/", 1)
+      while url.startswith("../"):
+        _, url = url.split("/", 1)
+        if "/" in dir:
+          dir, _ = dir.rsplit("/", 1)
+      url = dir + "/" + url
+    if url.startswith("//"):
+      return URL(self.scheme + ":" + url)
+    elif self.scheme == "file":
+      return URL("file://" + url)
+    else:
+      return URL(self.scheme + "://" + self.host + ":" + str(self.port) + url)
+
   def request(self, headers=None):
     if self.scheme == "view-source":
       return self.inner_url.request(headers)
@@ -46,16 +72,9 @@ class URL:
         type=socket.SOCK_STREAM,
         proto=socket.IPPROTO_TCP
     )
-    if self.scheme == "http":
-      self.port = 80
-    elif self.scheme == "https":
-      self.port = 443
     if self.scheme == "https":
       ctx = ssl.create_default_context()
       s = ctx.wrap_socket(s, server_hostname=self.host)
-    if ":" in self.host:
-      self.host, port = self.host.split(":", 1)
-      self.port = int(port)
     s.connect((self.host, self.port))
 
     default_headers = {

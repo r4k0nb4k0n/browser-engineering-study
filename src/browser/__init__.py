@@ -1,5 +1,11 @@
-from browser.css import CSSParser, DescendantSelector, TagSelector, style
-from browser.html import Element, HTMLParser, Tag, Text, lex, print_tree
+from browser.css import (
+    CSSParser,
+    DEFAULT_STYLE_SHEET,
+    DescendantSelector,
+    TagSelector,
+    style,
+)
+from browser.html import Element, HTMLParser, Tag, Text, lex, print_tree, tree_to_list
 from browser.url import URL, load
 
 try:
@@ -25,6 +31,7 @@ __all__ = [
     "lex",
     "HTMLParser",
     "print_tree",
+    "tree_to_list",
     "load",
     "FONTS",
     "get_font",
@@ -41,4 +48,5 @@ __all__ = [
     "TagSelector",
     "DescendantSelector",
     "style",
+    "DEFAULT_STYLE_SHEET",
 ]

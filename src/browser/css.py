@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from browser.html import Element
 
 
@@ -123,12 +125,21 @@ class DescendantSelector:
     return f"DescendantSelector(ancestor={self.ancestor!r}, descendant={self.descendant!r})"
 
 
-def style(node):
+def style(node, rules):
   node.style = {}
+  for selector, body in rules:
+    if not selector.matches(node): continue
+    for property, value in body.items():
+      node.style[property] = value
   if isinstance(node, Element) and "style" in node.attributes:
     pairs = CSSParser(node.attributes["style"]).body()
     for property, value in pairs.items():
       node.style[property] = value
   for child in node.children:
-    style(child)
+    style(child, rules)
+
+
+DEFAULT_STYLE_SHEET = CSSParser(
+    open(Path(__file__).parent / "browser.css").read()
+).parse()
 
