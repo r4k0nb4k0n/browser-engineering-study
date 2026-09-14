@@ -104,7 +104,7 @@ class HTMLParser:
           self.add_text(text)
         text = ""
         i += 1
-      elif c == ">":
+      elif c == ">" and in_tag:
         in_tag = False
         self.add_tag(text)
         text = ""

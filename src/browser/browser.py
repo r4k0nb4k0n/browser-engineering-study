@@ -1,7 +1,7 @@
 import tkinter
 
 from browser.css import CSSParser, DEFAULT_STYLE_SHEET, cascade_priority, style
-from browser.html import Element, HTMLParser, ViewSourceParser, tree_to_list
+from browser.html import Element, HTMLParser, Text, ViewSourceParser, tree_to_list
 from browser.layout import HEIGHT, VSTEP, WIDTH, DocumentLayout, paint_tree
 
 SCROLL_STEP = 100
@@ -50,6 +50,14 @@ class Browser:
       except Exception:
         continue
       rules.extend(CSSParser(body).parse())
+
+    style_tags = [node
+                  for node in tree_to_list(self.nodes, [])
+                  if isinstance(node, Element)
+                  and node.tag == "style"]
+    for style_tag in style_tags:
+      css_text = "".join([child.text for child in style_tag.children if isinstance(child, Text)])
+      rules.extend(CSSParser(css_text).parse())
 
     style(self.nodes, sorted(rules, key=cascade_priority))
     self.document = DocumentLayout(self.nodes)

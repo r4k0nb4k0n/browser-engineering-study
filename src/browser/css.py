@@ -45,12 +45,26 @@ class CSSParser:
         self.i += 1
     return None
 
+  def simple_selector(self):
+    tag = self.word().casefold()
+    out = TagSelector(tag)
+    while self.i < len(self.s) and self.s[self.i] == ":":
+      if self.s[self.i:].startswith(":has("):
+        self.i += len(":has(")
+        self.whitespace()
+        descendant = self.selector()
+        self.whitespace()
+        self.literal(")")
+        out = HasSelector(out, descendant)
+      else:
+        break
+    return out
+
   def selector(self):
-    out = TagSelector(self.word().casefold())
+    out = self.simple_selector()
     self.whitespace()
-    while self.i < len(self.s) and self.s[self.i] != "{":
-      tag = self.word()
-      descendant = TagSelector(tag.casefold())
+    while self.i < len(self.s) and self.s[self.i] not in "{)":
+      descendant = self.simple_selector()
       out = DescendantSelector(out, descendant)
       self.whitespace()
     return out
@@ -126,6 +140,29 @@ class DescendantSelector:
   def __repr__(self):
     return f"DescendantSelector(ancestor={self.ancestor!r}, descendant={self.descendant!r})"
 
+class HasSelector:
+
+  def __init__(self, ancestor, descendant):
+    self.ancestor = ancestor
+    self.descendant = descendant
+    self.priority = ancestor.priority + descendant.priority
+
+  def matches(self, node):
+    if not self.ancestor.matches(node):
+      return False
+    return self.has_descendant(node)
+
+  def has_descendant(self, node):
+    for child in node.children:
+      if isinstance(child, Element):
+        if self.descendant.matches(child):
+          return True
+        if self.has_descendant(child):
+          return True
+    return False
+
+  def __repr__(self):
+    return f"HasSelector(ancestor={self.ancestor!r}, descendant={self.descendant!r})"
 
 def cascade_priority(rule):
   selector, body = rule

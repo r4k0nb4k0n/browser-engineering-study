@@ -112,6 +112,8 @@ class BlockLayout:
     if mode == "block":
       previous = None
       for child in self.node.children:
+        if isinstance(child, Element) and (child.tag == "head" or child.tag in HTMLParser.HEAD_TAGS):
+          continue
         next = BlockLayout(child, self, previous)
         self.children.append(next)
         previous = next
@@ -171,6 +173,8 @@ class BlockLayout:
       for word in node.text.split():
         self.word(node, word)
     else:
+      if isinstance(node, Element) and (node.tag == "head" or node.tag in HTMLParser.HEAD_TAGS):
+        return
       if node.tag == "br":
         self.flush()
       for child in node.children:
