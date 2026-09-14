@@ -91,7 +91,13 @@ class BlockLayout:
 
   def layout(self):
     self.x = self.parent.x
-    self.width = self.parent.width
+    style_width = "auto"
+    if (hasattr(self.node, "style")):
+      style_width = self.node.style.get("width", "auto")
+    if style_width.endswith("px"):
+      self.width = int(style_width[:-2])
+    else:
+      self.width = self.parent.width
     if self.previous:
       self.y = self.previous.y + self.previous.height
     else:
@@ -120,7 +126,12 @@ class BlockLayout:
     for child in self.children:
       child.layout()
 
-    if mode == "block":
+    style_height = "auto"
+    if hasattr(self.node, "style"):
+      style_height = self.node.style.get("height", "auto")
+    if style_height.endswith("px"):
+      self.height = int(style_height[:-2])
+    elif mode == "block":
       self.height = sum([child.height for child in self.children])
     else:
       self.height = self.cursor_y
