@@ -161,6 +161,43 @@ class HasSelector:
           return True
     return False
 
+  # --- [6-10 O(1) 분할 상환 최적화 대안들] ---
+  #
+  # [기법 A: 하향식 메모이제이션 (DP)]
+  # __init__에 self.cache = {} 추가 후 사용:
+  # def has_descendant(self, node):
+  #   if node in self.cache:
+  #     return self.cache[node]
+  #   has = False
+  #   for child in node.children:
+  #     if isinstance(child, Element):
+  #       if self.descendant.matches(child) or self.has_descendant(child):
+  #         has = True
+  #         break
+  #   self.cache[node] = has
+  #   return has
+  #
+  # [기법 B: 자손에서 조상으로 상향식 마킹 (Upward Marking)]
+  # def prepare(self, node):
+  #   from browser.html import tree_to_list
+  #   root = node
+  #   while root.parent:
+  #     root = root.parent
+  #   self.marked = set()
+  #   for el in tree_to_list(root, []):
+  #     if isinstance(el, Element) and self.descendant.matches(el):
+  #       curr = el.parent
+  #       while curr and curr not in self.marked:
+  #         self.marked.add(curr)
+  #         curr = curr.parent
+  #
+  # def matches(self, node):
+  #   if not self.ancestor.matches(node):
+  #     return False
+  #   if getattr(self, "marked", None) is None:
+  #     self.prepare(node)
+  #   return node in self.marked
+
   def __repr__(self):
     return f"HasSelector(ancestor={self.ancestor!r}, descendant={self.descendant!r})"
 
