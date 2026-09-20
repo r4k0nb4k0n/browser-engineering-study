@@ -17,6 +17,8 @@ try:
       HEIGHT,
       HSTEP,
       BlockLayout,
+      LineLayout,
+      TextLayout,
       DrawRect,
       DrawText,
       VSTEP,
@@ -32,6 +34,8 @@ except ImportError:
   HEIGHT, WIDTH = 600, 800
   HSTEP, VSTEP = 13, 18
   BlockLayout = None
+  LineLayout = None
+  TextLayout = None
   DrawRect, DrawText, paint_tree = None, None, None
   get_font = None
   capture_tk_window = None
@@ -54,6 +58,8 @@ __all__ = [
     "HSTEP",
     "VSTEP",
     "BlockLayout",
+    "LineLayout",
+    "TextLayout",
     "DrawText",
     "DrawRect",
     "paint_tree",

@@ -62,6 +62,28 @@ class DocumentLayout:
   def paint(self):
     return []
 
+class LineLayout:
+  def __init__(self, node, parent, previous):
+    self.node = node
+    self.parent = parent
+    self.previous = previous
+    self.children = []
+
+  def __repr__(self):
+    return "LineLayout()"
+
+
+class TextLayout:
+  def __init__(self, node, word, parent, previous):
+    self.node = node
+    self.word = word
+    self.children = []
+    self.parent = parent
+    self.previous = previous
+
+  def __repr__(self):
+    return f"TextLayout('{self.word}')"
+
 class BlockLayout:
 
   def __init__(self, node, parent, previous):
@@ -118,12 +140,8 @@ class BlockLayout:
         self.children.append(next)
         previous = next
     else:
-      self.display_list = []
-      self.cursor_x = 0
-      self.cursor_y = 0
-      self.line = []
+      self.new_line()
       self.recurse(self.node)
-      self.flush()
 
     for child in self.children:
       child.layout()
@@ -133,10 +151,8 @@ class BlockLayout:
       style_height = self.node.style.get("height", "auto")
     if style_height.endswith("px"):
       self.height = int(style_height[:-2])
-    elif mode == "block":
-      self.height = sum([child.height for child in self.children])
     else:
-      self.height = self.cursor_y
+      self.height = sum([child.height for child in self.children])
 
   def layout_intermediate(self):
     previous = None
@@ -176,7 +192,7 @@ class BlockLayout:
       if isinstance(node, Element) and (node.tag == "head" or node.tag in HTMLParser.HEAD_TAGS):
         return
       if node.tag == "br":
-        self.flush()
+        self.new_line()
       for child in node.children:
         self.recurse(child)
 
@@ -195,9 +211,18 @@ class BlockLayout:
     font = get_font(size, weight, style)
     w = font.measure(word)
     if self.cursor_x + w > self.width:
-      self.flush()
-    self.line.append((self.cursor_x, word, font, color))
+      self.new_line()
+    line = self.children[-1]
+    previous_word = line.children[-1] if line.children else None
+    text = TextLayout(node, word, line, previous_word)
+    line.children.append(text)
     self.cursor_x += w + font.measure(" ")
+
+  def new_line(self):
+    self.cursor_x = 0
+    last_line = self.children[-1] if self.children else None
+    new_line = LineLayout(self.node, self, last_line)
+    self.children.append(new_line)
 
   def flush(self):
     if not self.line:
