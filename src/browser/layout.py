@@ -69,8 +69,27 @@ class LineLayout:
     self.previous = previous
     self.children = []
 
-  def __repr__(self):
-    return "LineLayout()"
+  def layout(self):
+    self.width = self.parent.width
+    self.x = self.parent.x
+
+    if self.previous:
+      self.y = self.previous.y + self.previous.height
+    else:
+      self.y = self.parent.y
+
+    for word in self.children:
+      word.layout()
+    max_ascent = max([word.font.metrics("ascent") for word in self.children])
+    baseline = self.y + 1.25 * max_ascent
+    for word in self.children:
+      word.y = baseline - word.font.metrics("ascent")
+    max_descent = max([word.font.metrics("descent") for word in self.children])
+    
+    self.height = 1.25 * (max_ascent + max_descent)
+
+  def paint(self):
+    return []
 
 
 class TextLayout:
@@ -81,8 +100,32 @@ class TextLayout:
     self.parent = parent
     self.previous = previous
 
-  def __repr__(self):
-    return f"TextLayout('{self.word}')"
+  def layout(self):
+    if hasattr(self.node, "style"):
+      weight = self.node.style["font-weight"]
+      style = self.node.style["font-style"]
+      if style == "normal": style = "roman"
+      size = int(float(self.node.style["font-size"][:-2]) * .75)
+    else:
+      weight = "normal"
+      style = "roman"
+      size = 12
+    self.font = get_font(size, weight, style)
+    self.width = self.font.measure(self.word)
+
+    if self.previous:
+      space = self.previous.font.measure(" ")
+      self.x = self.previous.x + space + self.previous.width
+    else:
+      self.x = self.parent.x
+
+    self.height = self.font.metrics("linespace")
+
+  def paint(self):
+    color = "black"
+    if hasattr(self.node, "style"):
+      color = self.node.style["color"]
+    return [DrawText(self.x, self.y, self.word, self.font, color)]
 
 class BlockLayout:
 
@@ -126,9 +169,13 @@ class BlockLayout:
       self.y = self.parent.y
 
     if isinstance(self.node, Element) and self.node.tag == "nav" and self.node.attributes.get("id") == "toc":
-      tableOfContentsTitle = Element("div", { "class": "table-of-contents-title" }, self.node)
-      tableOfContentsTitle.children.append(Text("Table of Contents", tableOfContentsTitle))
-      self.node.children.insert(0, tableOfContentsTitle)
+      if not (self.node.children and isinstance(self.node.children[0], Element) and self.node.children[0].attributes.get("class") == "table-of-contents-title"):
+        tableOfContentsTitle = Element("div", { "class": "table-of-contents-title" }, self.node)
+        tableOfContentsTitle.style = { "font-size": "16px", "font-style": "normal", "font-weight": "normal", "color": "black" }
+        toc_text = Text("Table of Contents", tableOfContentsTitle)
+        toc_text.style = tableOfContentsTitle.style.copy()
+        tableOfContentsTitle.children.append(toc_text)
+        self.node.children.insert(0, tableOfContentsTitle)
 
     mode = self.layout_mode()
     if mode == "block":
@@ -179,9 +226,6 @@ class BlockLayout:
       rect = DrawRect(self.x, self.y, x2, y2, "gray")
       cmds.append(rect)
 
-    if self.layout_mode() == "inline":
-      for x, y, word, font, color in self.display_list:
-        cmds.append(DrawText(x, y, word, font, color))
     return cmds
 
   def recurse(self, node):
