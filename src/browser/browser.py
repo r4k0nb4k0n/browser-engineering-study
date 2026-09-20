@@ -19,7 +19,9 @@ class Browser:
     )
     self.canvas.pack(fill="both", expand=True)
     self.scroll = 0
+    self.url = None
     self.window.bind("<Down>", self.scrolldown)
+    self.window.bind("<Button-1>", self.click)
 
   def draw(self):
     self.canvas.delete("all")
@@ -30,6 +32,8 @@ class Browser:
     self.canvas.update_idletasks()
 
   def load(self, url):
+    self.url = url
+    self.scroll = 0
     body = url.request()
     if url.scheme == "view-source":
       self.nodes = ViewSourceParser(body).parse()
@@ -70,3 +74,21 @@ class Browser:
     max_y = max(self.document.height + 2 * VSTEP - HEIGHT, 0)
     self.scroll = min(self.scroll + SCROLL_STEP, max_y)
     self.draw()
+
+  def click(self, e):
+    x, y = e.x, e.y
+    y += self.scroll
+
+    objs = [obj for obj in tree_to_list(self.document, [])
+      if obj.x <= x < obj.x + obj.width
+      and obj.y <= y < obj.y + obj.height]
+    if not objs: return
+    elt = objs[-1].node
+
+    while elt:
+      if isinstance(elt, Text):
+        pass
+      elif elt.tag == "a" and "href" in elt.attributes:
+        url = self.url.resolve(elt.attributes["href"])
+        return self.load(url)
+      elt = elt.parent
