@@ -78,6 +78,10 @@ class LineLayout:
     else:
       self.y = self.parent.y
 
+    if not self.children:
+      self.height = 0
+      return
+
     for word in self.children:
       word.layout()
     max_ascent = max([word.font.metrics("ascent") for word in self.children])
