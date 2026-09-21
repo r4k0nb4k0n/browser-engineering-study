@@ -24,10 +24,12 @@ class Tab:
 
   def __init__(self, tab_height):
     self.url = None
+    self.history = []
     self.scroll = 0
     self.tab_height = tab_height
 
   def load(self, url):
+    self.history.append(url)
     self.url = url
     self.scroll = 0
     body = url.request()
@@ -102,6 +104,12 @@ class Tab:
         return self.load(url)
       elt = elt.parent
 
+  def go_back(self):
+    if len(self.history) > 1:
+      self.history.pop()
+      back = self.history.pop()
+      self.load(back)
+
 
 class Chrome:
 
@@ -119,7 +127,26 @@ class Chrome:
         self.padding + plus_width,
         self.padding + self.font_height,
     )
-    self.bottom = self.tabbar_bottom
+    self.urlbar_top = self.tabbar_bottom
+    self.urlbar_bottom = (
+        self.urlbar_top + self.font_height + 2 * self.padding
+    )
+    self.bottom = self.urlbar_bottom
+
+    back_width = self.font.measure("<") + 2 * self.padding
+    self.back_rect = Rect(
+        self.padding,
+        self.urlbar_top + self.padding,
+        self.padding + back_width,
+        self.urlbar_bottom - self.padding,
+    )
+
+    self.address_rect = Rect(
+        self.back_rect.right + self.padding,
+        self.urlbar_top + self.padding,
+        WIDTH - self.padding,
+        self.urlbar_bottom - self.padding,
+    )
 
   def tab_rect(self, i):
     tabs_start = self.newtab_rect.right + self.padding
@@ -169,11 +196,39 @@ class Chrome:
             DrawLine(bounds.right, bounds.bottom, WIDTH, bounds.bottom, "black", 1)
         )
 
+    # Back (<) button
+    cmds.append(DrawOutline(self.back_rect, "black", 1))
+    cmds.append(
+        DrawText(
+            self.back_rect.left + self.padding,
+            self.back_rect.top,
+            "<",
+            self.font,
+            "black",
+        )
+    )
+
+    # Address bar
+    cmds.append(DrawOutline(self.address_rect, "black", 1))
+    if self.browser.active_tab:
+      url = str(self.browser.active_tab.url)
+      cmds.append(
+          DrawText(
+              self.address_rect.left + self.padding,
+              self.address_rect.top,
+              url,
+              self.font,
+              "black",
+          )
+      )
+
     return cmds
 
   def click(self, x, y):
     if self.newtab_rect.contains_point(x, y):
       self.browser.new_tab(URL("https://browser.engineering/"))
+    elif self.back_rect.contains_point(x, y):
+      self.browser.active_tab.go_back()
     else:
       for i, tab in enumerate(self.browser.tabs):
         if self.tab_rect(i).contains_point(x, y):
