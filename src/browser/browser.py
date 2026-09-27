@@ -176,6 +176,7 @@ class Chrome:
     )
     self.focus = None
     self.address_bar = ""
+    self.address_bar_cursor_index = 0
 
   def tab_rect(self, i):
     tabs_start = self.newtab_rect.right + self.padding
@@ -269,7 +270,7 @@ class Chrome:
               "black",
           )
       )
-      w = self.font.measure(self.address_bar)
+      w = self.font.measure(self.address_bar[:self.address_bar_cursor_index])
       cmds.append(
           DrawLine(
               self.address_rect.left + self.padding + w,
@@ -305,7 +306,11 @@ class Chrome:
       self.browser.active_tab.go_forward()
     elif self.address_rect.contains_point(x, y):
       self.focus = "address bar"
-      self.address_bar = ""
+      if self.browser.active_tab and self.browser.active_tab.url:
+        self.address_bar = str(self.browser.active_tab.url)
+      else:
+        self.address_bar = ""
+      self.address_bar_cursor_index = len(self.address_bar)
     else:
       for i, tab in enumerate(self.browser.tabs):
         if self.tab_rect(i).contains_point(x, y):
@@ -314,16 +319,40 @@ class Chrome:
 
   def keypress(self, char):
     if self.focus == "address bar":
-      self.address_bar += char
+      self.address_bar = (
+          self.address_bar[:self.address_bar_cursor_index]
+          + char
+          + self.address_bar[self.address_bar_cursor_index:]
+      )
+      self.address_bar_cursor_index += 1
 
   def backspace(self):
-    if self.focus == "address bar":
-      self.address_bar = self.address_bar[:-1]
+    if (
+        self.focus == "address bar"
+        and self.address_bar != ""
+        and self.address_bar_cursor_index > 0
+    ):
+      self.address_bar = (
+          self.address_bar[:self.address_bar_cursor_index - 1]
+          + self.address_bar[self.address_bar_cursor_index:]
+      )
+      self.address_bar_cursor_index -= 1
 
   def enter(self):
-    if self.focus == "address bar":
+    if self.focus == "address bar" and self.address_bar != "":
       self.browser.active_tab.load(URL(self.address_bar))
+      self.address_bar_cursor_index = len(self.address_bar)
       self.focus = None
+
+  def arrow_left(self):
+    if self.focus == "address bar":
+      self.address_bar_cursor_index = max(self.address_bar_cursor_index - 1, 0)
+
+  def arrow_right(self):
+    if self.focus == "address bar":
+      self.address_bar_cursor_index = min(
+          self.address_bar_cursor_index + 1, len(self.address_bar)
+      )
 
 
 class Browser:
@@ -342,6 +371,8 @@ class Browser:
     self.window.bind("<Key>", self.handle_key)
     self.window.bind("<BackSpace>", self.handle_backspace)
     self.window.bind("<Return>", self.handle_enter)
+    self.window.bind("<Left>", self.handle_left)
+    self.window.bind("<Right>", self.handle_right)
 
     self.tabs = []
     self.active_tab = None
@@ -381,6 +412,14 @@ class Browser:
 
   def handle_enter(self, e):
     self.chrome.enter()
+    self.draw()
+
+  def handle_left(self, e):
+    self.chrome.arrow_left()
+    self.draw()
+
+  def handle_right(self, e):
+    self.chrome.arrow_right()
     self.draw()
 
   def new_tab(self, url):
