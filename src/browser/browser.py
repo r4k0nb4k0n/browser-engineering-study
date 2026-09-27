@@ -18,7 +18,7 @@ from browser.layout import (
 from browser.url import URL
 
 SCROLL_STEP = 100
-
+VISITED_LINKS = set()
 
 class Tab:
 
@@ -35,12 +35,23 @@ class Tab:
       self.history.append(url)
       self.history_pointer = len(self.history) - 1
     self.url = url
+    if url.scheme != "view-source":
+      VISITED_LINKS.add(str(url))
     self.scroll = 0
     body = url.request()
     if url.scheme == "view-source":
       self.nodes = ViewSourceParser(body).parse()
     else:
       self.nodes = HTMLParser(body).parse()
+
+    for node in tree_to_list(self.nodes, []):
+      if (
+          isinstance(node, Element)
+          and node.tag == "a"
+          and "href" in node.attributes
+          and str(self.url.resolve(node.attributes["href"])) in VISITED_LINKS
+      ):
+        node.is_visited_link = True
 
     rules = DEFAULT_STYLE_SHEET.copy()
     links = [

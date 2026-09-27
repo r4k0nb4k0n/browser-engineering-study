@@ -56,6 +56,9 @@ class CSSParser:
         self.whitespace()
         self.literal(")")
         out = HasSelector(out, descendant)
+      elif self.s[self.i:].startswith(":visited"):
+        self.i += len(":visited")
+        out = VisitedSelector(out)
       else:
         break
     return out
@@ -240,8 +243,16 @@ def style(node, rules):
   for child in node.children:
     style(child, rules)
 
+class VisitedSelector:
+
+  def __init__(self, selector):
+    self.selector = selector
+    # 대충 기본값보다는 높게 계산되도록 한다. 매직 넘버 관리를 어떻게 해야 할까?
+    self.priority = selector.priority + 42
+
+  def matches(self, node):
+    return self.selector.matches(node) and getattr(node, "is_visited_link", False)
 
 DEFAULT_STYLE_SHEET = CSSParser(
     open(Path(__file__).parent / "browser.css").read()
 ).parse()
-
