@@ -25,11 +25,15 @@ class Tab:
   def __init__(self, tab_height):
     self.url = None
     self.history = []
+    self.history_pointer = -1
     self.scroll = 0
     self.tab_height = tab_height
 
-  def load(self, url):
-    self.history.append(url)
+  def load(self, url, update_history=True):
+    if update_history:
+      self.history = self.history[: self.history_pointer + 1]
+      self.history.append(url)
+      self.history_pointer = len(self.history) - 1
     self.url = url
     self.scroll = 0
     body = url.request()
@@ -105,10 +109,14 @@ class Tab:
       elt = elt.parent
 
   def go_back(self):
-    if len(self.history) > 1:
-      self.history.pop()
-      back = self.history.pop()
-      self.load(back)
+    if self.history_pointer > 0:
+      self.history_pointer -= 1
+      self.load(self.history[self.history_pointer], update_history=False)
+
+  def go_forward(self):
+    if self.history_pointer < len(self.history) - 1:
+      self.history_pointer += 1
+      self.load(self.history[self.history_pointer], update_history=False)
 
 
 class Chrome:
@@ -141,8 +149,16 @@ class Chrome:
         self.urlbar_bottom - self.padding,
     )
 
-    self.address_rect = Rect(
+    forward_width = self.font.measure(">") + 2 * self.padding
+    self.forward_rect = Rect(
         self.back_rect.right + self.padding,
+        self.urlbar_top + self.padding,
+        self.back_rect.right + self.padding + forward_width,
+        self.urlbar_bottom - self.padding,
+    )
+
+    self.address_rect = Rect(
+        self.forward_rect.right + self.padding,
         self.urlbar_top + self.padding,
         WIDTH - self.padding,
         self.urlbar_bottom - self.padding,
@@ -198,15 +214,35 @@ class Chrome:
             DrawLine(bounds.right, bounds.bottom, WIDTH, bounds.bottom, "black", 1)
         )
 
+    tab = self.browser.active_tab
+    back_color = "black" if tab and tab.history_pointer > 0 else "gray"
+    forward_color = (
+        "black"
+        if tab and tab.history_pointer < len(tab.history) - 1
+        else "gray"
+    )
+
     # Back (<) button
-    cmds.append(DrawOutline(self.back_rect, "black", 1))
+    cmds.append(DrawOutline(self.back_rect, back_color, 1))
     cmds.append(
         DrawText(
             self.back_rect.left + self.padding,
             self.back_rect.top,
             "<",
             self.font,
-            "black",
+            back_color,
+        )
+    )
+
+    # Forward (>) button
+    cmds.append(DrawOutline(self.forward_rect, forward_color, 1))
+    cmds.append(
+        DrawText(
+            self.forward_rect.left + self.padding,
+            self.forward_rect.top,
+            ">",
+            self.font,
+            forward_color,
         )
     )
 
@@ -254,6 +290,8 @@ class Chrome:
       self.browser.new_tab(URL("https://browser.engineering/"))
     elif self.back_rect.contains_point(x, y):
       self.browser.active_tab.go_back()
+    elif self.forward_rect.contains_point(x, y):
+      self.browser.active_tab.go_forward()
     elif self.address_rect.contains_point(x, y):
       self.focus = "address bar"
       self.address_bar = ""
