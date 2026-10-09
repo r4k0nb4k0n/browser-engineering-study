@@ -261,16 +261,17 @@ class Chrome:
     # Address bar
     cmds.append(DrawOutline(self.address_rect, "black", 1))
     if self.focus == "address bar":
+      text = self.address_bar.replace("\n", "").replace("\r", "")
       cmds.append(
           DrawText(
               self.address_rect.left + self.padding,
               self.address_rect.top,
-              self.address_bar,
+              text,
               self.font,
               "black",
           )
       )
-      w = self.font.measure(self.address_bar[:self.address_bar_cursor_index])
+      w = self.font.measure(text[:self.address_bar_cursor_index])
       cmds.append(
           DrawLine(
               self.address_rect.left + self.padding + w,
@@ -283,7 +284,7 @@ class Chrome:
       )
     else:
       if self.browser.active_tab:
-        url = str(self.browser.active_tab.url)
+        url = str(self.browser.active_tab.url).replace("\n", "").replace("\r", "")
         cmds.append(
             DrawText(
                 self.address_rect.left + self.padding,
