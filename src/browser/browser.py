@@ -1,4 +1,5 @@
 import tkinter
+import urllib.parse
 
 from browser.css import CSSParser, DEFAULT_STYLE_SHEET, cascade_priority, style
 from browser.html import Element, HTMLParser, Text, ViewSourceParser, tree_to_list
@@ -30,7 +31,7 @@ class Tab:
     self.tab_height = tab_height
     self.focus = None
 
-  def load(self, url, update_history=True):
+  def load(self, url, payload=None, update_history=True):
     if update_history:
       self.history = self.history[: self.history_pointer + 1]
       self.history.append(url)
@@ -39,7 +40,7 @@ class Tab:
     if url.scheme != "view-source":
       VISITED_LINKS.add(str(url))
     self.scroll = 0
-    body = url.request()
+    body = url.request(payload)
     if url.scheme == "view-source":
       self.nodes = ViewSourceParser(body).parse()
     else:
@@ -129,8 +130,33 @@ class Tab:
         self.focus = elt
         elt.is_focused = True
         return self.render()
+      elif elt.tag == "button":
+        form = elt
+        while form:
+          if form.tag == "form" and "action" in form.attributes:
+            return self.submit_form(form)
+          form = form.parent
       elt = elt.parent
     self.render()
+
+  def submit_form(self, elt):
+    inputs = [
+        node
+        for node in tree_to_list(elt, [])
+        if isinstance(node, Element)
+        and node.tag == "input"
+        and "name" in node.attributes
+    ]
+    body = ""
+    for input in inputs:
+      name = input.attributes["name"]
+      value = input.attributes.get("value", "")
+      name = urllib.parse.quote(name)
+      value = urllib.parse.quote(value)
+      body += "&" + name + "=" + value
+    body = body[1:]
+    url = self.url.resolve(elt.attributes["action"])
+    self.load(url, body)
 
   def keypress(self, char):
     if self.focus:

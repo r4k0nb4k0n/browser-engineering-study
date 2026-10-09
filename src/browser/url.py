@@ -72,9 +72,9 @@ class URL:
     else:
       return URL(self.scheme + "://" + self.host + ":" + str(self.port) + url)
 
-  def request(self, headers=None):
+  def request(self, payload=None, headers=None):
     if self.scheme == "view-source":
-      return self.inner_url.request(headers)
+      return self.inner_url.request(payload=payload, headers=headers)
 
     if self.scheme == "data":
       return self.data
@@ -101,10 +101,16 @@ class URL:
     }
     if headers:
         default_headers.update(headers)
-    request_lines = [f"GET {self.path} HTTP/1.1\r\n"]
+    method = "POST" if payload else "GET"
+    request_lines = [f"{method} {self.path} HTTP/1.0\r\n"]
+    if payload:
+        length = len(payload.encode("utf8"))
+        default_headers["Content-Length"] = str(length)
     for header_name, header_value in default_headers.items():
         request_lines.append(f"{header_name}: {header_value}\r\n")
     request_lines.append("\r\n")
+    if payload:
+        request_lines.append(payload)
 
     request_data = "".join(request_lines).encode("utf8")
     s.send(request_data)
