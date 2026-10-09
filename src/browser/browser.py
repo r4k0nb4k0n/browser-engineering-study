@@ -139,6 +139,14 @@ class Tab:
       elt = elt.parent
     self.render()
 
+  def enter(self):
+    if self.focus and self.focus.tag == "input":
+      elt = self.focus
+      while elt:
+        if elt.tag == "form" and "action" in elt.attributes:
+          return self.submit_form(elt)
+        elt = elt.parent
+
   def submit_form(self, elt):
     inputs = [
         node
@@ -467,7 +475,10 @@ class Browser:
     self.draw()
 
   def handle_enter(self, e):
-    self.chrome.enter()
+    if self.focus == "content":
+      self.active_tab.enter()
+    else:
+      self.chrome.enter()
     self.draw()
 
   def handle_left(self, e):
