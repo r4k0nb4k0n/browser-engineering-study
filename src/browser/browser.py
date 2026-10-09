@@ -28,6 +28,7 @@ class Tab:
     self.history_pointer = -1
     self.scroll = 0
     self.tab_height = tab_height
+    self.focus = None
 
   def load(self, url, update_history=True):
     if update_history:
@@ -53,7 +54,7 @@ class Tab:
       ):
         node.is_visited_link = True
 
-    rules = DEFAULT_STYLE_SHEET.copy()
+    self.rules = DEFAULT_STYLE_SHEET.copy()
     links = [
         node.attributes["href"]
         for node in tree_to_list(self.nodes, [])
@@ -68,7 +69,7 @@ class Tab:
         body = style_url.request()
       except Exception:
         continue
-      rules.extend(CSSParser(body).parse())
+      self.rules.extend(CSSParser(body).parse())
 
     style_tags = [
         node
@@ -79,9 +80,12 @@ class Tab:
       css_text = "".join(
           [child.text for child in style_tag.children if isinstance(child, Text)]
       )
-      rules.extend(CSSParser(css_text).parse())
+      self.rules.extend(CSSParser(css_text).parse())
+    
+    self.render()
 
-    style(self.nodes, sorted(rules, key=cascade_priority))
+  def render(self):
+    style(self.nodes, sorted(self.rules, key=cascade_priority))
     self.document = DocumentLayout(self.nodes)
     self.document.layout()
     self.display_list = []
@@ -100,6 +104,9 @@ class Tab:
     self.scroll = min(self.scroll + SCROLL_STEP, max_y)
 
   def click(self, x, y):
+    if self.focus:
+      self.focus.is_focused = False
+    self.focus = None
     y += self.scroll
 
     objs = [
@@ -108,7 +115,7 @@ class Tab:
         if obj.x <= x < obj.x + obj.width and obj.y <= y < obj.y + obj.height
     ]
     if not objs:
-      return
+      return self.render()
     elt = objs[-1].node
 
     while elt:
@@ -117,7 +124,18 @@ class Tab:
       elif elt.tag == "a" and "href" in elt.attributes:
         url = self.url.resolve(elt.attributes["href"])
         return self.load(url)
+      elif elt.tag == "input":
+        elt.attributes["value"] = ""
+        self.focus = elt
+        elt.is_focused = True
+        return self.render()
       elt = elt.parent
+    self.render()
+
+  def keypress(self, char):
+    if self.focus:
+      self.focus.attributes["value"] += char
+      self.render()
 
   def go_back(self):
     if self.history_pointer > 0:
@@ -318,6 +336,9 @@ class Chrome:
           self.browser.active_tab = tab
           break
 
+  def blur(self):
+    self.focus = None
+
   def keypress(self, char):
     if self.focus == "address bar":
       self.address_bar = (
@@ -326,6 +347,8 @@ class Chrome:
           + self.address_bar[self.address_bar_cursor_index:]
       )
       self.address_bar_cursor_index += 1
+      return True
+    return False
 
   def backspace(self):
     if (
@@ -377,6 +400,7 @@ class Browser:
 
     self.tabs = []
     self.active_tab = None
+    self.focus = None
     self.chrome = Chrome(self)
 
   def draw(self):
@@ -391,10 +415,12 @@ class Browser:
     self.draw()
 
   def handle_click(self, e):
-    self.chrome.focus = None
     if e.y < self.chrome.bottom:
+      self.focus = None
       self.chrome.click(e.x, e.y)
     else:
+      self.focus = "content"
+      self.chrome.blur()
       tab_y = e.y - self.chrome.bottom
       self.active_tab.click(e.x, tab_y)
     self.draw()
@@ -404,8 +430,11 @@ class Browser:
       return
     if not (0x20 <= ord(e.char) < 0x7F):
       return
-    self.chrome.keypress(e.char)
-    self.draw()
+    if self.chrome.keypress(e.char):
+      self.draw()
+    elif self.focus == "content":
+      self.active_tab.keypress(e.char)
+      self.draw()
 
   def handle_backspace(self, e):
     self.chrome.backspace()
