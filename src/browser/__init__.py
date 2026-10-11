@@ -17,6 +17,8 @@ try:
       HEIGHT,
       HSTEP,
       BlockLayout,
+      ButtonLayout,
+      InputLayout,
       LineLayout,
       TextLayout,
       DrawLine,
@@ -37,6 +39,8 @@ except ImportError:
   HEIGHT, WIDTH = 600, 800
   HSTEP, VSTEP = 13, 18
   BlockLayout = None
+  ButtonLayout = None
+  InputLayout = None
   LineLayout = None
   TextLayout = None
   DrawRect, DrawText, DrawOutline, DrawLine, paint_tree = (
@@ -70,6 +74,8 @@ __all__ = [
     "BlockLayout",
     "LineLayout",
     "TextLayout",
+    "InputLayout",
+    "ButtonLayout",
     "DrawText",
     "DrawRect",
     "DrawOutline",

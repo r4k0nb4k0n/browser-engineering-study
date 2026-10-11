@@ -95,6 +95,8 @@ class LineLayout:
     max_descent = max([word.font.metrics("descent") for word in self.children])
     
     self.height = 1.25 * (max_ascent + max_descent)
+    max_child_height = max([getattr(child, "height", 0) for child in self.children])
+    self.height = max(self.height, max_child_height)
 
   def should_paint(self):
     return True
@@ -181,14 +183,8 @@ class InputLayout:
     if bgcolor != "transparent":
       rect = DrawRect(self.self_rect(), bgcolor)
       cmds.append(rect)
-    if self.node.tag == "input":
-      text = self.node.attributes.get("value", "")
-    elif self.node.tag == "button":
-      if len(self.node.children) == 1 and isinstance(self.node.children[0], Text):
-        text = self.node.children[0].text
-      else:
-        print("Ignoring HTML contents inside button")
-        text = ""
+
+    text = self.node.attributes.get("value", "")
     color = self.node.style["color"]
     cmds.append(DrawText(self.x, self.y, text, self.font, color))
 
@@ -198,6 +194,131 @@ class InputLayout:
           DrawLine(cx, self.y, cx, self.y + self.height, "black", 1)
       )
 
+    return cmds
+
+
+class ButtonLayout(InputLayout):
+
+  def __init__(self, node, parent, previous):
+    super().__init__(node, parent, previous)
+    self._y = None
+    self.children = []
+
+  @property
+  def y(self):
+    return self._y
+
+  @y.setter
+  def y(self, value):
+    diff = value - (self._y if self._y is not None else 0)
+    self._y = value
+    for line in self.children:
+      if hasattr(line, "y") and line.y is not None:
+        line.y += diff
+      for word in line.children:
+        if hasattr(word, "y") and word.y is not None:
+          word.y += diff
+
+  def layout(self):
+    super().layout()
+    self._y = 0
+    self.cursor_x = 0
+    self.children = []
+    self.new_line()
+    for child in self.node.children:
+      self.recurse(child)
+    for line in self.children:
+      line.layout()
+    self.height = max(
+        sum([line.height for line in self.children]),
+        self.font.metrics("linespace"),
+    )
+
+  def new_line(self):
+    self.cursor_x = 0
+    last_line = self.children[-1] if self.children else None
+    line = LineLayout(self.node, self, last_line)
+    self.children.append(line)
+
+  def recurse(self, node):
+    if isinstance(node, Text):
+      for word in node.text.split():
+        self.word(node, word)
+    else:
+      if node.tag == "br":
+        self.new_line()
+      elif node.tag == "input":
+        self.input(node)
+      elif node.tag == "button":
+        self.button(node)
+      else:
+        for child in node.children:
+          self.recurse(child)
+
+  def input(self, node):
+    w = INPUT_WIDTH_PX
+    if self.cursor_x + w > self.width:
+      self.new_line()
+    line = self.children[-1]
+    previous_word = line.children[-1] if line.children else None
+    input = InputLayout(node, line, previous_word)
+    line.children.append(input)
+
+    weight = node.style["font-weight"]
+    style = node.style["font-style"]
+    if style == "normal": style = "roman"
+    size = int(float(node.style["font-size"][:-2]) * .75)
+    font = get_font(size, weight, style)
+
+    self.cursor_x += w + font.measure(" ")
+
+  def button(self, node):
+    w = INPUT_WIDTH_PX
+    if self.cursor_x + w > self.width:
+      self.new_line()
+    line = self.children[-1]
+    previous_word = line.children[-1] if line.children else None
+    button = ButtonLayout(node, line, previous_word)
+    line.children.append(button)
+
+    weight = node.style["font-weight"]
+    style = node.style["font-style"]
+    if style == "normal": style = "roman"
+    size = int(float(node.style["font-size"][:-2]) * .75)
+    font = get_font(size, weight, style)
+
+    self.cursor_x += w + font.measure(" ")
+
+
+  def word(self, node, word):
+    if hasattr(node, "style"):
+      weight = node.style["font-weight"]
+      style = node.style["font-style"]
+      if style == "normal":
+        style = "roman"
+      size = int(float(node.style["font-size"][:-2]) * 0.75)
+      color = node.style["color"]
+    else:
+      weight = "normal"
+      style = "roman"
+      size = 12
+      color = "black"
+    font = get_font(size, weight, style)
+    w = font.measure(word)
+    if self.cursor_x + w > self.width:
+      self.new_line()
+    line = self.children[-1]
+    previous_word = line.children[-1] if line.children else None
+    text = TextLayout(node, word, line, previous_word)
+    line.children.append(text)
+    self.cursor_x += w + font.measure(" ")
+
+  def paint(self):
+    cmds = []
+    bgcolor = self.node.style.get("background-color", "transparent")
+    if bgcolor != "transparent":
+      rect = DrawRect(self.self_rect(), bgcolor)
+      cmds.append(rect)
     return cmds
 
 
@@ -315,8 +436,10 @@ class BlockLayout:
         return
       if node.tag == "br":
         self.new_line()
-      elif node.tag == "input" or node.tag == "button":
+      elif node.tag == "input":
         self.input(node)
+      elif node.tag == "button":
+        self.button(node)
       else:
         for child in node.children:
           self.recurse(child)
@@ -357,6 +480,23 @@ class BlockLayout:
     previous_word = line.children[-1] if line.children else None
     input = InputLayout(node, line, previous_word)
     line.children.append(input)
+
+    weight = node.style["font-weight"]
+    style = node.style["font-style"]
+    if style == "normal": style = "roman"
+    size = int(float(node.style["font-size"][:-2]) * .75)
+    font = get_font(size, weight, style)
+
+    self.cursor_x += w + font.measure(" ")
+
+  def button(self, node):
+    w = INPUT_WIDTH_PX
+    if self.cursor_x + w > self.width:
+      self.new_line()
+    line = self.children[-1]
+    previous_word = line.children[-1] if line.children else None
+    button = ButtonLayout(node, line, previous_word)
+    line.children.append(button)
 
     weight = node.style["font-weight"]
     style = node.style["font-style"]
