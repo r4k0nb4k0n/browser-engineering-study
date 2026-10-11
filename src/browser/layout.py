@@ -19,6 +19,15 @@ BLOCK_ELEMENTS = [
 
 INPUT_WIDTH_PX = 200
 
+
+def get_node_width(node):
+  if hasattr(node, "style"):
+    width = node.style.get("width", "auto")
+    if width.endswith("px"):
+      return int(width[:-2])
+  return INPUT_WIDTH_PX
+
+
 def get_font(size, weight, style, family="Times New Roman"):
   key = (size, weight, style, family)
   if key not in FONTS:
@@ -161,7 +170,7 @@ class InputLayout:
       style = "roman"
       size = 12
     self.font = get_font(size, weight, style)
-    self.width = INPUT_WIDTH_PX
+    self.width = get_node_width(self.node)
 
     if self.previous:
       space = self.previous.font.measure(" ")
@@ -189,7 +198,8 @@ class InputLayout:
     cmds.append(DrawText(self.x, self.y, text, self.font, color))
 
     if self.node.is_focused:
-      cx = self.x + self.font.measure(text)
+      cursor_idx = getattr(self.node, "cursor_index", len(text))
+      cx = self.x + self.font.measure(text[:cursor_idx])
       cmds.append(
           DrawLine(cx, self.y, cx, self.y + self.height, "black", 1)
       )
@@ -256,7 +266,7 @@ class ButtonLayout(InputLayout):
           self.recurse(child)
 
   def input(self, node):
-    w = INPUT_WIDTH_PX
+    w = get_node_width(node)
     if self.cursor_x + w > self.width:
       self.new_line()
     line = self.children[-1]
@@ -273,7 +283,7 @@ class ButtonLayout(InputLayout):
     self.cursor_x += w + font.measure(" ")
 
   def button(self, node):
-    w = INPUT_WIDTH_PX
+    w = get_node_width(node)
     if self.cursor_x + w > self.width:
       self.new_line()
     line = self.children[-1]
@@ -473,7 +483,7 @@ class BlockLayout:
     self.children.append(new_line)
 
   def input(self, node):
-    w = INPUT_WIDTH_PX
+    w = get_node_width(node)
     if self.cursor_x + w > self.width:
       self.new_line()
     line = self.children[-1]
@@ -490,7 +500,7 @@ class BlockLayout:
     self.cursor_x += w + font.measure(" ")
 
   def button(self, node):
-    w = INPUT_WIDTH_PX
+    w = get_node_width(node)
     if self.cursor_x + w > self.width:
       self.new_line()
     line = self.children[-1]

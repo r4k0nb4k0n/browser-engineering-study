@@ -186,189 +186,114 @@ class Chrome:
 
   def __init__(self, browser):
     self.browser = browser
-    self.font = get_font(20, "normal", "roman")
-    self.font_height = self.font.metrics("linespace")
-    self.padding = 5
-    self.tabbar_top = 0
-    self.tabbar_bottom = self.font_height + 2 * self.padding
-    plus_width = self.font.measure("+") + 2 * self.padding
-    self.newtab_rect = Rect(
-        self.padding,
-        self.padding,
-        self.padding + plus_width,
-        self.padding + self.font_height,
-    )
-    self.urlbar_top = self.tabbar_bottom
-    self.urlbar_bottom = (
-        self.urlbar_top + self.font_height + 2 * self.padding
-    )
-    self.bottom = self.urlbar_bottom
-
-    back_width = self.font.measure("<") + 2 * self.padding
-    self.back_rect = Rect(
-        self.padding,
-        self.urlbar_top + self.padding,
-        self.padding + back_width,
-        self.urlbar_bottom - self.padding,
-    )
-
-    forward_width = self.font.measure(">") + 2 * self.padding
-    self.forward_rect = Rect(
-        self.back_rect.right + self.padding,
-        self.urlbar_top + self.padding,
-        self.back_rect.right + self.padding + forward_width,
-        self.urlbar_bottom - self.padding,
-    )
-
-    self.address_rect = Rect(
-        self.forward_rect.right + self.padding,
-        self.urlbar_top + self.padding,
-        WIDTH - self.padding,
-        self.urlbar_bottom - self.padding,
-    )
     self.focus = None
     self.address_bar = ""
     self.address_bar_cursor_index = 0
+    self.document = None
+    self.display_list = []
+    self.bottom = 60
+    self.render()
 
-  def tab_rect(self, i):
-    tabs_start = self.newtab_rect.right + self.padding
-    tab_width = self.font.measure("Tab X") + 2 * self.padding
-    return Rect(
-        tabs_start + tab_width * i,
-        self.tabbar_top,
-        tabs_start + tab_width * (i + 1),
-        self.tabbar_bottom,
+  def html(self):
+    active_tab = self.browser.active_tab
+    lines = ['<div class="chrome">']
+
+    # 1. 탭 바: 새 탭 버튼(+) 및 열려 있는 탭 목록(<a>)
+    lines.append('<button class="newtab" style="width:30px;">+</button>')
+    for i, tab in enumerate(self.browser.tabs):
+      if tab == active_tab:
+        lines.append(f' <a href="tab:{i}"><b>Tab {i}</b></a>')
+      else:
+        lines.append(f' <a href="tab:{i}">Tab {i}</a>')
+    lines.append("<br>")
+
+    # 2. 내비게이션 바: 뒤로가기(◀), 앞으로가기(▶), 주소창(<input>)
+    can_back = active_tab and active_tab.history_pointer > 0
+    can_forward = (
+        active_tab and active_tab.history_pointer < len(active_tab.history) - 1
     )
+    back_style = "width:30px;" if can_back else "width:30px;color:gray;"
+    fwd_style = "width:30px;" if can_forward else "width:30px;color:gray;"
+
+    lines.append(f'<button class="back" style="{back_style}">◀</button>')
+    lines.append(f'<button class="forward" style="{fwd_style}">▶</button>')
+    lines.append(' <input class="address" style="width:680px;">')
+    lines.append("</div>")
+    return "".join(lines)
+
+  def render(self):
+    active_tab = self.browser.active_tab
+    current_url = str(active_tab.url) if (active_tab and active_tab.url) else ""
+    val = self.address_bar if self.focus == "address bar" else current_url
+
+    tree = HTMLParser(self.html()).parse()
+    style(tree, sorted(DEFAULT_STYLE_SHEET, key=cascade_priority))
+
+    for node in tree_to_list(tree, []):
+      if isinstance(node, Element) and node.tag == "input":
+        node.attributes["value"] = val
+        if self.focus == "address bar":
+          node.is_focused = True
+          node.cursor_index = self.address_bar_cursor_index
+
+    self.document = DocumentLayout(tree)
+    self.document.layout()
+    self.bottom = self.document.height + 2 * VSTEP
+    self.display_list = []
+    paint_tree(self.document, self.display_list)
 
   def paint(self):
-    cmds = []
-    # Chrome background & bottom separator line
-    cmds.append(DrawRect(Rect(0, 0, WIDTH, self.bottom), "white"))
-    cmds.append(DrawLine(0, self.bottom, WIDTH, self.bottom, "black", 1))
-
-    # New tab (+) button
-    cmds.append(DrawOutline(self.newtab_rect, "black", 1))
-    cmds.append(
-        DrawText(
-            self.newtab_rect.left + self.padding,
-            self.newtab_rect.top,
-            "+",
-            self.font,
-            "black",
-        )
-    )
-
-    # Tabs
-    for i, tab in enumerate(self.browser.tabs):
-      bounds = self.tab_rect(i)
-      cmds.append(DrawLine(bounds.left, 0, bounds.left, bounds.bottom, "black", 1))
-      cmds.append(DrawLine(bounds.right, 0, bounds.right, bounds.bottom, "black", 1))
-      cmds.append(
-          DrawText(
-              bounds.left + self.padding,
-              bounds.top + self.padding,
-              f"Tab {i}",
-              self.font,
-              "black",
-          )
-      )
-      if tab == self.browser.active_tab:
-        cmds.append(DrawLine(0, bounds.bottom, bounds.left, bounds.bottom, "black", 1))
-        cmds.append(
-            DrawLine(bounds.right, bounds.bottom, WIDTH, bounds.bottom, "black", 1)
-        )
-
-    tab = self.browser.active_tab
-    back_color = "black" if tab and tab.history_pointer > 0 else "gray"
-    forward_color = (
-        "black"
-        if tab and tab.history_pointer < len(tab.history) - 1
-        else "gray"
-    )
-
-    # Back (<) button
-    cmds.append(DrawOutline(self.back_rect, back_color, 1))
-    cmds.append(
-        DrawText(
-            self.back_rect.left + self.padding,
-            self.back_rect.top,
-            "<",
-            self.font,
-            back_color,
-        )
-    )
-
-    # Forward (>) button
-    cmds.append(DrawOutline(self.forward_rect, forward_color, 1))
-    cmds.append(
-        DrawText(
-            self.forward_rect.left + self.padding,
-            self.forward_rect.top,
-            ">",
-            self.font,
-            forward_color,
-        )
-    )
-
-    # Address bar
-    cmds.append(DrawOutline(self.address_rect, "black", 1))
-    if self.focus == "address bar":
-      text = self.address_bar.replace("\n", "").replace("\r", "")
-      cmds.append(
-          DrawText(
-              self.address_rect.left + self.padding,
-              self.address_rect.top,
-              text,
-              self.font,
-              "black",
-          )
-      )
-      w = self.font.measure(text[:self.address_bar_cursor_index])
-      cmds.append(
-          DrawLine(
-              self.address_rect.left + self.padding + w,
-              self.address_rect.top,
-              self.address_rect.left + self.padding + w,
-              self.address_rect.bottom,
-              "red",
-              1,
-          )
-      )
-    else:
-      if self.browser.active_tab:
-        url = str(self.browser.active_tab.url).replace("\n", "").replace("\r", "")
-        cmds.append(
-            DrawText(
-                self.address_rect.left + self.padding,
-                self.address_rect.top,
-                url,
-                self.font,
-                "black",
-            )
-        )
-
+    self.render()
+    cmds = [
+        DrawRect(Rect(0, 0, WIDTH, self.bottom), "white"),
+        DrawLine(0, self.bottom, WIDTH, self.bottom, "black", 1),
+    ]
+    cmds.extend(self.display_list)
     return cmds
 
   def click(self, x, y):
+    self.render()
+    objs = [
+        obj
+        for obj in tree_to_list(self.document, [])
+        if obj.x <= x < obj.x + obj.width and obj.y <= y < obj.y + obj.height
+    ]
+    if not objs:
+      self.focus = None
+      return
+
+    elt = objs[-1].node
+    while elt:
+      if isinstance(elt, Text):
+        pass
+      elif elt.tag == "button":
+        self.focus = None
+        cls = elt.attributes.get("class", "")
+        if "newtab" in cls:
+          self.browser.new_tab(URL("https://browser.engineering/"))
+        elif "back" in cls and self.browser.active_tab:
+          self.browser.active_tab.go_back()
+        elif "forward" in cls and self.browser.active_tab:
+          self.browser.active_tab.go_forward()
+        return
+      elif elt.tag == "a" and "href" in elt.attributes:
+        self.focus = None
+        href = elt.attributes["href"]
+        if href.startswith("tab:"):
+          tab_idx = int(href[4:])
+          if 0 <= tab_idx < len(self.browser.tabs):
+            self.browser.active_tab = self.browser.tabs[tab_idx]
+        return
+      elif elt.tag == "input":
+        self.focus = "address bar"
+        if self.browser.active_tab and self.browser.active_tab.url:
+          self.address_bar = str(self.browser.active_tab.url)
+        else:
+          self.address_bar = ""
+        self.address_bar_cursor_index = len(self.address_bar)
+        return
+      elt = elt.parent
     self.focus = None
-    if self.newtab_rect.contains_point(x, y):
-      self.browser.new_tab(URL("https://browser.engineering/"))
-    elif self.back_rect.contains_point(x, y):
-      self.browser.active_tab.go_back()
-    elif self.forward_rect.contains_point(x, y):
-      self.browser.active_tab.go_forward()
-    elif self.address_rect.contains_point(x, y):
-      self.focus = "address bar"
-      if self.browser.active_tab and self.browser.active_tab.url:
-        self.address_bar = str(self.browser.active_tab.url)
-      else:
-        self.address_bar = ""
-      self.address_bar_cursor_index = len(self.address_bar)
-    else:
-      for i, tab in enumerate(self.browser.tabs):
-        if self.tab_rect(i).contains_point(x, y):
-          self.browser.active_tab = tab
-          break
 
   def blur(self):
     self.focus = None
