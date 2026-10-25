@@ -1,3 +1,4 @@
+import dukpy
 import tkinter
 import urllib.parse
 
@@ -54,6 +55,21 @@ class Tab:
           and str(self.url.resolve(node.attributes["href"])) in VISITED_LINKS
       ):
         node.is_visited_link = True
+
+    scripts = [
+        node.attributes["src"]
+        for node in tree_to_list(self.nodes, [])
+        if isinstance(node, Element)
+        and node.tag == "script"
+        and "src" in node.attributes
+    ]
+    for script in scripts:
+      script_url = url.resolve(script)
+      try:
+        body = script_url.request()
+      except Exception:
+        continue
+      print("Script returned: ", dukpy.evaljs(body))
 
     self.rules = DEFAULT_STYLE_SHEET.copy()
     links = [
