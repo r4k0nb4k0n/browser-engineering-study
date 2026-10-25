@@ -1,3 +1,4 @@
+import os
 import dukpy
 import tkinter
 import urllib.parse
@@ -22,6 +23,17 @@ from browser.url import URL
 SCROLL_STEP = 100
 VISITED_LINKS = set()
 
+RUNTIME_JS = open(os.path.join(os.path.dirname(__file__), "runtime.js")).read()
+
+class JSContext:
+  def __init__(self):
+    self.interp = dukpy.JSInterpreter()
+    self.interp.export_function("log", print)
+    self.interp.evaljs(RUNTIME_JS)
+
+  def run(self, code):
+    return self.interp.evaljs(code)
+
 class Tab:
 
   def __init__(self, tab_height):
@@ -31,6 +43,7 @@ class Tab:
     self.scroll = 0
     self.tab_height = tab_height
     self.focus = None
+    self.js = None
 
   def load(self, url, payload=None, update_history=True):
     if update_history:
@@ -63,13 +76,14 @@ class Tab:
         and node.tag == "script"
         and "src" in node.attributes
     ]
+    self.js = JSContext()
     for script in scripts:
       script_url = url.resolve(script)
       try:
         body = script_url.request()
       except Exception:
         continue
-      print("Script returned: ", dukpy.evaljs(body))
+      self.js.run(body)
 
     self.rules = DEFAULT_STYLE_SHEET.copy()
     links = [
