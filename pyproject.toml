@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Web Browser Engineering study notes and code"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "dukpy>=0.5.1",
+]
 
 [project.optional-dependencies]
 dev = [
