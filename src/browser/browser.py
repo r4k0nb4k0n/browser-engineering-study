@@ -25,7 +25,7 @@ VISITED_LINKS = set()
 
 RUNTIME_JS = open(os.path.join(os.path.dirname(__file__), "runtime.js")).read()
 EVENT_DISPATCH_JS = (
-    "new Node(dukpy.handle).dispatchEvent(dukpy.type)"
+    "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
 )
 
 class JSContext:
@@ -48,9 +48,10 @@ class JSContext:
 
   def dispatch_event(self, type, elt):
     handle = self.node_to_handle.get(elt, -1)
-    self.interp.evaljs(
+    do_default = self.interp.evaljs(
         EVENT_DISPATCH_JS, type=type, handle=handle
     )
+    return not do_default
 
   def get_handle(self, elt):
     if elt not in self.node_to_handle:
@@ -203,20 +204,20 @@ class Tab:
       if isinstance(elt, Text):
         pass
       elif elt.tag == "a" and "href" in elt.attributes:
-        if self.js:
-          self.js.dispatch_event("click", elt)
+        if self.js and self.js.dispatch_event("click", elt):
+          return
         url = self.url.resolve(elt.attributes["href"])
         return self.load(url)
       elif elt.tag == "input":
-        if self.js:
-          self.js.dispatch_event("click", elt)
+        if self.js and self.js.dispatch_event("click", elt):
+          return
         elt.attributes["value"] = ""
         self.focus = elt
         elt.is_focused = True
         return self.render()
       elif elt.tag == "button":
-        if self.js:
-          self.js.dispatch_event("click", elt)
+        if self.js and self.js.dispatch_event("click", elt):
+          return
         form = elt
         while form:
           if form.tag == "form" and "action" in form.attributes:
@@ -234,8 +235,8 @@ class Tab:
         elt = elt.parent
 
   def submit_form(self, elt):
-    if self.js:
-      self.js.dispatch_event("submit", elt)
+    if self.js and self.js.dispatch_event("submit", elt):
+      return
     inputs = [
         node
         for node in tree_to_list(elt, [])
@@ -256,8 +257,8 @@ class Tab:
 
   def keypress(self, char):
     if self.focus:
-      if self.js:
-        self.js.dispatch_event("keydown", self.focus)
+      if self.js and self.js.dispatch_event("keydown", self.focus):
+        return
       self.focus.attributes["value"] += char
       self.render()
 
