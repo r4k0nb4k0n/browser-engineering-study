@@ -33,6 +33,7 @@ class JSContext:
     self.interp = dukpy.JSInterpreter()
     self.interp.export_function("log", print)
     self.interp.export_function("querySelectorAll", self.querySelectorAll)
+    self.interp.export_function("getAttribute", self.getAttribute)
     self.interp.evaljs(RUNTIME_JS)
 
   def run(self, script, code):
@@ -58,6 +59,11 @@ class JSContext:
         if selector.matches(node)
     ]
     return [self.get_handle(node) for node in nodes]
+
+  def getAttribute(self, handle, attr):
+    elt = self.handle_to_node[handle]
+    attr = elt.attributes.get(attr, None)
+    return attr if attr else ""
 
 class Tab:
 
