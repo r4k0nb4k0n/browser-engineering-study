@@ -37,6 +37,7 @@ class JSContext:
     self.interp.export_function("log", print)
     self.interp.export_function("querySelectorAll", self.querySelectorAll)
     self.interp.export_function("getAttribute", self.getAttribute)
+    self.interp.export_function("innerHTML_set", self.innerHTML_set)
     self.interp.evaljs(RUNTIME_JS)
 
   def run(self, script, code):
@@ -73,6 +74,15 @@ class JSContext:
     elt = self.handle_to_node[handle]
     attr = elt.attributes.get(attr, None)
     return attr if attr else ""
+
+  def innerHTML_set(self, handle, s):
+    doc = HTMLParser("<html><body>" + s + "</body></html>").parse()
+    new_nodes = doc.children[0].children
+    elt = self.handle_to_node[handle]
+    elt.children = new_nodes
+    for child in elt.children:
+      child.parent = elt
+    self.tab.render()
 
 class Tab:
 
