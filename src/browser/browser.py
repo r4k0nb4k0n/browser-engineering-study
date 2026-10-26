@@ -26,9 +26,13 @@ VISITED_LINKS = set()
 RUNTIME_JS = open(os.path.join(os.path.dirname(__file__), "runtime.js")).read()
 
 class JSContext:
-  def __init__(self):
+  def __init__(self, tab):
+    self.tab = tab
+    self.node_to_handle = {}
+    self.handle_to_node = {}
     self.interp = dukpy.JSInterpreter()
     self.interp.export_function("log", print)
+    self.interp.export_function("querySelectorAll", self.querySelectorAll)
     self.interp.evaljs(RUNTIME_JS)
 
   def run(self, script, code):
@@ -36,6 +40,24 @@ class JSContext:
       return self.interp.evaljs(code)
     except dukpy.JSRuntimeError as e:
       print("Script", script, "crashed", e)
+
+  def get_handle(self, elt):
+    if elt not in self.node_to_handle:
+      handle = len(self.node_to_handle)
+      self.node_to_handle[elt] = handle
+      self.handle_to_node[handle] = elt
+    else:
+      handle = self.node_to_handle[elt]
+    return handle
+
+  def querySelectorAll(self, selector_text):
+    selector = CSSParser(selector_text).selector()
+    nodes = [
+        node
+        for node in tree_to_list(self.tab.nodes, [])
+        if selector.matches(node)
+    ]
+    return [self.get_handle(node) for node in nodes]
 
 class Tab:
 
@@ -79,7 +101,7 @@ class Tab:
         and node.tag == "script"
         and "src" in node.attributes
     ]
-    self.js = JSContext()
+    self.js = JSContext(self)
     for script in scripts:
       script_url = url.resolve(script)
       try:
